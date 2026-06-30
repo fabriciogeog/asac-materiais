@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Início — ASAC Materiais</title>
+  <link rel="stylesheet" href="/ui/css/style.css">
+</head>
+<body>
+  <a href="#conteudo-principal" class="skip-link">Ir para o conteúdo principal</a>
+
+  <header role="banner">
+    <h1>ASAC — Controle de Materiais</h1>
+    <nav aria-label="Menu principal" id="nav-principal"></nav>
+  </header>
+
+  <main id="conteudo-principal">
+    <h2>Painel de Resumo</h2>
+
+    <div class="cards-resumo" aria-label="Indicadores do estoque">
+      <div class="card">
+        <p class="card-titulo">Produtos ativos</p>
+        <p class="card-valor" id="total-produtos" aria-live="polite">—</p>
+      </div>
+      <div class="card card-alerta">
+        <p class="card-titulo">Abaixo do mínimo</p>
+        <p class="card-valor" id="abaixo-minimo" aria-live="polite">—</p>
+      </div>
+      <div class="card">
+        <p class="card-titulo">Categorias</p>
+        <p class="card-valor" id="total-categorias" aria-live="polite">—</p>
+      </div>
+      <div class="card">
+        <p class="card-titulo">Movimentações hoje</p>
+        <p class="card-valor" id="mov-hoje" aria-live="polite">—</p>
+      </div>
+    </div>
+
+    <section class="secao" aria-labelledby="titulo-alertas">
+      <h3 id="titulo-alertas">Produtos abaixo do estoque mínimo</h3>
+      <div class="tabela-container">
+        <table aria-describedby="desc-alertas">
+          <caption id="desc-alertas">Produtos que precisam de reposição</caption>
+          <thead>
+            <tr>
+              <th scope="col">Produto</th>
+              <th scope="col">Categoria</th>
+              <th scope="col">Saldo atual</th>
+              <th scope="col">Estoque mínimo</th>
+            </tr>
+          </thead>
+          <tbody id="lista-alertas">
+            <tr><td colspan="4">Carregando…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <div role="alert" id="notificacao" hidden class="notificacao"></div>
+
+  <script src="/ui/js/api.js"></script>
+  <script src="/ui/js/app.js"></script>
+  <script>
+    exigirAuth();
+    renderizarNav('index');
+
+    async function carregarResumo() {
+      try {
+        const [produtos, abaixo, cats, movs] = await Promise.all([
+          api.get('/produtos/?apenas_ativos=true'),
+          api.get('/produtos/abaixo-minimo'),
+          api.get('/categorias/'),
+          api.get('/movimentacoes/'),
+        ]);
+
+        document.getElementById('total-produtos').textContent   = produtos.length;
+        document.getElementById('abaixo-minimo').textContent    = abaixo.length;
+        document.getElementById('total-categorias').textContent = cats.length;
+
+        const hoje = new Date().toDateString();
+        const movsHoje = movs.filter(m => new Date(m.dataMov).toDateString() === hoje);
+        document.getElementById('mov-hoje').textContent = movsHoje.length;
+
+        const tbody = document.getElementById('lista-alertas');
+        if (abaixo.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="4">Nenhum produto abaixo do estoque mínimo. ✓</td></tr>';
+        } else {
+          tbody.innerHTML = abaixo.map(p => `
+            <tr>
+              <td>${p.descricao}</td>
+              <td>${p.idCategoria}</td>
+              <td>${formatarNumero(p.saldoAtual)}</td>
+              <td>${formatarNumero(p.estoqueMinimo)}</td>
+            </tr>
+          `).join('');
+        }
+      } catch (err) {
+        notificar(err.message, 'erro');
+      }
+    }
+
+    carregarResumo();
+  </script>
+</body>
+</html>

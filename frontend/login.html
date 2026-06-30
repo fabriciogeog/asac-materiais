@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Entrar — ASAC Materiais</title>
+  <link rel="stylesheet" href="/ui/css/style.css">
+</head>
+<body>
+  <div class="login-wrapper">
+    <main class="login-caixa" id="conteudo-principal">
+      <h1>ASAC — Controle de Materiais</h1>
+
+      <div role="alert" id="notificacao" hidden class="notificacao notificacao-erro"></div>
+
+      <form id="form-login" novalidate>
+        <div class="campo">
+          <label for="login">Usuário</label>
+          <input type="text" id="login" name="username" autocomplete="username"
+                 required aria-required="true" aria-describedby="login-erro">
+          <span class="erro-campo" id="login-erro" hidden>Informe o usuário.</span>
+        </div>
+
+        <div class="campo">
+          <label for="senha">Senha</label>
+          <input type="password" id="senha" name="password" autocomplete="current-password"
+                 required aria-required="true" aria-describedby="senha-erro">
+          <span class="erro-campo" id="senha-erro" hidden>Informe a senha.</span>
+        </div>
+
+        <div class="acoes-formulario">
+          <button type="submit" class="btn btn-primario" id="btn-entrar">Entrar</button>
+        </div>
+      </form>
+    </main>
+  </div>
+
+  <script src="/ui/js/api.js"></script>
+  <script>
+    // Redireciona se já estiver autenticado
+    if (getToken()) window.location.href = '/ui/index.html';
+
+    document.getElementById('form-login').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const loginVal = document.getElementById('login').value.trim();
+      const senhaVal = document.getElementById('senha').value;
+      const notif    = document.getElementById('notificacao');
+      const btn      = document.getElementById('btn-entrar');
+
+      // Validação simples
+      let valido = true;
+      if (!loginVal) {
+        document.getElementById('login-erro').removeAttribute('hidden');
+        document.getElementById('login').setAttribute('aria-invalid', 'true');
+        valido = false;
+      } else {
+        document.getElementById('login-erro').setAttribute('hidden', '');
+        document.getElementById('login').removeAttribute('aria-invalid');
+      }
+      if (!senhaVal) {
+        document.getElementById('senha-erro').removeAttribute('hidden');
+        document.getElementById('senha').setAttribute('aria-invalid', 'true');
+        valido = false;
+      } else {
+        document.getElementById('senha-erro').setAttribute('hidden', '');
+        document.getElementById('senha').removeAttribute('aria-invalid');
+      }
+      if (!valido) return;
+
+      btn.disabled = true;
+      btn.textContent = 'Aguarde…';
+      notif.setAttribute('hidden', '');
+
+      try {
+        // Fetch bruto: não usa apiFetch para evitar o redirect automático no 401
+        const resp = await fetch('/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({ username: loginVal, password: senhaVal }),
+        });
+        const dados = await resp.json();
+        if (!resp.ok) throw new Error(dados.detail || 'Erro ao autenticar.');
+        salvarSessao(dados.access_token);
+        window.location.href = '/ui/index.html';
+      } catch (err) {
+        notif.textContent = err.message;
+        notif.removeAttribute('hidden');
+        notif.focus();
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Entrar';
+      }
+    });
+  </script>
+</body>
+</html>

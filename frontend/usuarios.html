@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Usuários — ASAC Materiais</title>
+  <link rel="stylesheet" href="/ui/css/style.css">
+</head>
+<body>
+  <a href="#conteudo-principal" class="skip-link">Ir para o conteúdo principal</a>
+
+  <header role="banner">
+    <h1>ASAC — Controle de Materiais</h1>
+    <nav aria-label="Menu principal" id="nav-principal"></nav>
+  </header>
+
+  <main id="conteudo-principal">
+    <div class="barra-tabela">
+      <h2>Usuários</h2>
+      <button class="btn btn-primario" id="btn-novo" onclick="abrirFormulario()">
+        + Novo usuário
+      </button>
+    </div>
+
+    <!-- Formulário -->
+    <section id="painel-form" hidden aria-labelledby="titulo-form">
+      <div class="painel-formulario">
+        <h3 id="titulo-form">Novo usuário</h3>
+        <form id="form-usuario" novalidate>
+          <input type="hidden" id="usr-id">
+          <div class="linha-campos">
+            <div class="campo">
+              <label for="usr-nome">Nome completo <abbr title="obrigatório">*</abbr></label>
+              <input type="text" id="usr-nome" required aria-required="true" maxlength="150">
+            </div>
+            <div class="campo" id="campo-login-wrap">
+              <label for="usr-login">Login <abbr title="obrigatório">*</abbr></label>
+              <input type="text" id="usr-login" required aria-required="true"
+                     autocomplete="off" maxlength="60">
+            </div>
+            <div class="campo" id="campo-senha-wrap">
+              <label for="usr-senha">Senha <abbr title="obrigatório">*</abbr></label>
+              <input type="password" id="usr-senha" autocomplete="new-password"
+                     aria-describedby="dica-senha" minlength="8">
+              <span class="erro-campo" id="dica-senha" style="color:var(--cor-desabilitado)">
+                Mínimo de 8 caracteres.
+              </span>
+            </div>
+            <div class="campo">
+              <label for="usr-perfil">Perfil <abbr title="obrigatório">*</abbr></label>
+              <select id="usr-perfil" required aria-required="true">
+                <option value="">Selecione…</option>
+                <option value="ADMINISTRADOR">Administrador</option>
+                <option value="OPERADOR">Operador</option>
+                <option value="CONSULTA">Consulta</option>
+              </select>
+            </div>
+          </div>
+          <div class="acoes-formulario">
+            <button type="submit" class="btn btn-primario">Salvar</button>
+            <button type="button" class="btn btn-secundario" onclick="fecharFormulario()">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- Tabela -->
+    <div class="tabela-container">
+      <table>
+        <caption>Lista de usuários do sistema</caption>
+        <thead>
+          <tr>
+            <th scope="col">Nome</th>
+            <th scope="col">Login</th>
+            <th scope="col">Perfil</th>
+            <th scope="col">Cadastro</th>
+            <th scope="col">Status</th>
+            <th scope="col">Ações</th>
+          </tr>
+        </thead>
+        <tbody id="lista-usuarios">
+          <tr><td colspan="6">Carregando…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <div role="alert" id="notificacao" hidden class="notificacao"></div>
+
+  <script src="/ui/js/api.js"></script>
+  <script src="/ui/js/app.js"></script>
+  <script>
+    exigirPerfil('ADMINISTRADOR');
+    renderizarNav('usuarios');
+
+    async function carregar() {
+      try {
+        const users = await api.get('/usuarios/');
+        const tbody = document.getElementById('lista-usuarios');
+        tbody.innerHTML = users.length === 0
+          ? '<tr><td colspan="6">Nenhum usuário encontrado.</td></tr>'
+          : users.map(u => `
+              <tr>
+                <td>${u.nome}</td>
+                <td>${u.login}</td>
+                <td>${u.perfil}</td>
+                <td>${u.dataCadastro || '—'}</td>
+                <td><span class="badge badge-${u.usuarioAtivo ? 'ativo' : 'inativo'}">
+                    ${u.usuarioAtivo ? 'Ativo' : 'Inativo'}
+                  </span></td>
+                <td class="acoes-tabela">
+                  <button class="btn btn-secundario btn-sm"
+                    onclick="abrirEdicao(${u.idUsuario}, '${u.nome.replace(/'/g,"\\'")}', '${u.perfil}')">
+                    Editar perfil
+                  </button>
+                  ${u.usuarioAtivo ? `
+                    <button class="btn btn-perigo btn-sm"
+                      onclick="desativar(${u.idUsuario}, '${u.nome.replace(/'/g,"\\'")}')">
+                      Desativar
+                    </button>` : ''}
+                </td>
+              </tr>`).join('');
+      } catch(err) { notificar(err.message, 'erro'); }
+    }
+
+    function abrirFormulario() {
+      document.getElementById('usr-id').value = '';
+      limparFormulario('form-usuario');
+      document.getElementById('titulo-form').textContent = 'Novo usuário';
+      // Campos login e senha são obrigatórios apenas na criação
+      document.getElementById('usr-login').required = true;
+      document.getElementById('usr-senha').required = true;
+      document.getElementById('campo-login-wrap').removeAttribute('hidden');
+      mostrarElemento('painel-form');
+      focarElemento('usr-nome');
+    }
+
+    function abrirEdicao(id, nome, perfil) {
+      document.getElementById('usr-id').value    = id;
+      document.getElementById('usr-nome').value  = nome;
+      document.getElementById('usr-perfil').value = perfil;
+      document.getElementById('usr-login').value  = '';
+      document.getElementById('usr-senha').value  = '';
+      document.getElementById('titulo-form').textContent = 'Editar usuário';
+      // Na edição, login e senha não são alterados por aqui
+      document.getElementById('usr-login').required = false;
+      document.getElementById('usr-senha').required = false;
+      document.getElementById('campo-login-wrap').setAttribute('hidden', '');
+      document.getElementById('campo-senha-wrap').setAttribute('hidden', '');
+      mostrarElemento('painel-form');
+      focarElemento('usr-nome');
+    }
+
+    function fecharFormulario() {
+      ocultarElemento('painel-form');
+      document.getElementById('campo-login-wrap').removeAttribute('hidden');
+      document.getElementById('campo-senha-wrap').removeAttribute('hidden');
+      limparFormulario('form-usuario');
+      focarElemento('btn-novo');
+    }
+
+    document.getElementById('form-usuario').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id     = document.getElementById('usr-id').value;
+      const nome   = document.getElementById('usr-nome').value.trim();
+      const perfil = document.getElementById('usr-perfil').value;
+
+      if (!perfil) { notificar('Selecione um perfil.', 'aviso'); focarElemento('usr-perfil'); return; }
+
+      try {
+        if (id) {
+          await api.put(`/usuarios/${id}`, { nome, perfil });
+          notificar('Usuário atualizado.', 'sucesso');
+        } else {
+          const login = document.getElementById('usr-login').value.trim();
+          const senha = document.getElementById('usr-senha').value;
+          if (!login) { notificar('Informe o login.', 'aviso'); focarElemento('usr-login'); return; }
+          if (senha.length < 8) { notificar('Senha muito curta (mínimo 8 caracteres).', 'aviso'); focarElemento('usr-senha'); return; }
+          await api.post('/usuarios/', { nome, login, senha, perfil });
+          notificar('Usuário cadastrado.', 'sucesso');
+        }
+        fecharFormulario();
+        carregar();
+      } catch(err) { notificar(err.message, 'erro'); }
+    });
+
+    async function desativar(id, nome) {
+      if (!confirm(`Desativar "${nome}"? O usuário perderá acesso ao sistema.`)) return;
+      try {
+        await api.delete(`/usuarios/${id}`);
+        notificar('Usuário desativado.', 'sucesso');
+        carregar();
+      } catch(err) { notificar(err.message, 'erro'); }
+    }
+
+    carregar();
+  </script>
+</body>
+</html>

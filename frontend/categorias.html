@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Categorias — ASAC Materiais</title>
+  <link rel="stylesheet" href="/ui/css/style.css">
+</head>
+<body>
+  <a href="#conteudo-principal" class="skip-link">Ir para o conteúdo principal</a>
+
+  <header role="banner">
+    <h1>ASAC — Controle de Materiais</h1>
+    <nav aria-label="Menu principal" id="nav-principal"></nav>
+  </header>
+
+  <main id="conteudo-principal">
+    <div class="barra-tabela">
+      <h2>Categorias</h2>
+      <button class="btn btn-primario" id="btn-nova" onclick="abrirFormulario()">
+        + Nova categoria
+      </button>
+    </div>
+
+    <!-- Formulário de inclusão / edição -->
+    <section id="painel-form" hidden aria-labelledby="titulo-form">
+      <div class="painel-formulario">
+        <h3 id="titulo-form">Nova categoria</h3>
+        <form id="form-categoria" novalidate>
+          <input type="hidden" id="cat-id">
+          <div class="linha-campos">
+            <div class="campo">
+              <label for="cat-nome">Nome <abbr title="obrigatório">*</abbr></label>
+              <input type="text" id="cat-nome" required aria-required="true" maxlength="80">
+            </div>
+            <div class="campo">
+              <label for="cat-desc">Descrição</label>
+              <input type="text" id="cat-desc" maxlength="200">
+            </div>
+          </div>
+          <div class="acoes-formulario">
+            <button type="submit" class="btn btn-primario">Salvar</button>
+            <button type="button" class="btn btn-secundario" onclick="fecharFormulario()">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- Tabela -->
+    <div class="tabela-container">
+      <table>
+        <caption>Lista de categorias cadastradas</caption>
+        <thead>
+          <tr>
+            <th scope="col">#</th>
+            <th scope="col">Nome</th>
+            <th scope="col">Descrição</th>
+            <th scope="col">Ações</th>
+          </tr>
+        </thead>
+        <tbody id="lista-categorias">
+          <tr><td colspan="4">Carregando…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <div role="alert" id="notificacao" hidden class="notificacao"></div>
+
+  <script src="/ui/js/api.js"></script>
+  <script src="/ui/js/app.js"></script>
+  <script>
+    exigirPerfil('ADMINISTRADOR', 'OPERADOR');
+    renderizarNav('categorias');
+
+    async function carregar() {
+      try {
+        const cats = await api.get('/categorias/');
+        const tbody = document.getElementById('lista-categorias');
+        tbody.innerHTML = cats.length === 0
+          ? '<tr><td colspan="4">Nenhuma categoria cadastrada.</td></tr>'
+          : cats.map(c => `
+              <tr>
+                <td>${c.idCategoria}</td>
+                <td>${c.nome}</td>
+                <td>${c.descricao || '—'}</td>
+                <td class="acoes-tabela">
+                  <button class="btn btn-secundario btn-sm"
+                    onclick="abrirFormulario(${c.idCategoria}, '${c.nome.replace(/'/g,"\\'")}', '${(c.descricao||'').replace(/'/g,"\\'")}')">
+                    Editar
+                  </button>
+                  <button class="btn btn-perigo btn-sm"
+                    onclick="excluir(${c.idCategoria}, '${c.nome.replace(/'/g,"\\'")}')">
+                    Excluir
+                  </button>
+                </td>
+              </tr>`).join('');
+      } catch(err) { notificar(err.message, 'erro'); }
+    }
+
+    function abrirFormulario(id = null, nome = '', desc = '') {
+      document.getElementById('cat-id').value   = id || '';
+      document.getElementById('cat-nome').value = nome;
+      document.getElementById('cat-desc').value = desc;
+      document.getElementById('titulo-form').textContent = id ? 'Editar categoria' : 'Nova categoria';
+      mostrarElemento('painel-form');
+      focarElemento('cat-nome');
+    }
+
+    function fecharFormulario() {
+      ocultarElemento('painel-form');
+      limparFormulario('form-categoria');
+      focarElemento('btn-nova');
+    }
+
+    document.getElementById('form-categoria').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id   = document.getElementById('cat-id').value;
+      const body = {
+        nome:     document.getElementById('cat-nome').value.trim(),
+        descricao: document.getElementById('cat-desc').value.trim() || null,
+      };
+      try {
+        if (id) await api.put(`/categorias/${id}`, body);
+        else    await api.post('/categorias/', body);
+        notificar(id ? 'Categoria atualizada.' : 'Categoria incluída.', 'sucesso');
+        fecharFormulario();
+        carregar();
+      } catch(err) { notificar(err.message, 'erro'); }
+    });
+
+    async function excluir(id, nome) {
+      if (!confirm(`Excluir a categoria "${nome}"? Esta ação não pode ser desfeita.`)) return;
+      try {
+        await api.delete(`/categorias/${id}`);
+        notificar('Categoria excluída.', 'sucesso');
+        carregar();
+      } catch(err) { notificar(err.message, 'erro'); }
+    }
+
+    carregar();
+  </script>
+</body>
+</html>

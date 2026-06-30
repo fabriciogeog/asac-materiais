@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Produtos — ASAC Materiais</title>
+  <link rel="stylesheet" href="/ui/css/style.css">
+</head>
+<body>
+  <a href="#conteudo-principal" class="skip-link">Ir para o conteúdo principal</a>
+
+  <header role="banner">
+    <h1>ASAC — Controle de Materiais</h1>
+    <nav aria-label="Menu principal" id="nav-principal"></nav>
+  </header>
+
+  <main id="conteudo-principal">
+    <div class="barra-tabela">
+      <h2>Produtos</h2>
+      <button class="btn btn-primario" id="btn-novo" onclick="abrirFormulario()">
+        + Novo produto
+      </button>
+      <label style="margin-left:auto; display:flex; align-items:center; gap:.4rem; font-size:.9rem;">
+        <input type="checkbox" id="chk-inativos" onchange="carregar()">
+        Mostrar inativos
+      </label>
+    </div>
+
+    <!-- Formulário -->
+    <section id="painel-form" hidden aria-labelledby="titulo-form">
+      <div class="painel-formulario">
+        <h3 id="titulo-form">Novo produto</h3>
+        <form id="form-produto" novalidate>
+          <input type="hidden" id="prod-id">
+          <div class="linha-campos">
+            <div class="campo">
+              <label for="prod-descricao">Descrição <abbr title="obrigatório">*</abbr></label>
+              <input type="text" id="prod-descricao" required aria-required="true" maxlength="200">
+            </div>
+            <div class="campo">
+              <label for="prod-marca">Marca</label>
+              <input type="text" id="prod-marca" maxlength="100">
+            </div>
+            <div class="campo">
+              <label for="prod-codbarras">Código de barras</label>
+              <input type="text" id="prod-codbarras" maxlength="50">
+            </div>
+            <div class="campo">
+              <label for="prod-categoria">Categoria <abbr title="obrigatório">*</abbr></label>
+              <select id="prod-categoria" required aria-required="true">
+                <option value="">Selecione…</option>
+              </select>
+            </div>
+            <div class="campo">
+              <label for="prod-estoque-min">Estoque mínimo</label>
+              <input type="number" id="prod-estoque-min" min="0" step="1" value="0">
+            </div>
+          </div>
+          <div class="acoes-formulario">
+            <button type="submit" class="btn btn-primario">Salvar</button>
+            <button type="button" class="btn btn-secundario" onclick="fecharFormulario()">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- Tabela -->
+    <div class="tabela-container">
+      <table>
+        <caption>Lista de produtos</caption>
+        <thead>
+          <tr>
+            <th scope="col">Descrição</th>
+            <th scope="col">Marca</th>
+            <th scope="col">Categoria</th>
+            <th scope="col">Saldo atual</th>
+            <th scope="col">Est. mínimo</th>
+            <th scope="col">Status</th>
+            <th scope="col">Ações</th>
+          </tr>
+        </thead>
+        <tbody id="lista-produtos">
+          <tr><td colspan="7">Carregando…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <div role="alert" id="notificacao" hidden class="notificacao"></div>
+
+  <script src="/ui/js/api.js"></script>
+  <script src="/ui/js/app.js"></script>
+  <script>
+    exigirAuth();
+    renderizarNav('produtos');
+
+    let _categorias = {};
+
+    async function carregar() {
+      try {
+        const mostrarInativos = document.getElementById('chk-inativos').checked;
+        const [prods, cats] = await Promise.all([
+          api.get(`/produtos/?apenas_ativos=${!mostrarInativos}`),
+          api.get('/categorias/'),
+        ]);
+        _categorias = Object.fromEntries(cats.map(c => [c.idCategoria, c.nome]));
+
+        const tbody = document.getElementById('lista-produtos');
+        tbody.innerHTML = prods.length === 0
+          ? '<tr><td colspan="7">Nenhum produto encontrado.</td></tr>'
+          : prods.map(p => `
+              <tr>
+                <td>${p.descricao}</td>
+                <td>${p.marca || '—'}</td>
+                <td>${_categorias[p.idCategoria] || p.idCategoria}</td>
+                <td>${formatarNumero(p.saldoAtual)}</td>
+                <td>${formatarNumero(p.estoqueMinimo)}</td>
+                <td><span class="badge badge-${p.produtoAtivo ? 'ativo' : 'inativo'}">
+                    ${p.produtoAtivo ? 'Ativo' : 'Inativo'}
+                  </span></td>
+                <td class="acoes-tabela">
+                  <button class="btn btn-secundario btn-sm"
+                    onclick="abrirFormulario(${JSON.stringify(p).replace(/"/g,'&quot;')})">
+                    Editar
+                  </button>
+                  ${p.produtoAtivo ? `
+                    <button class="btn btn-perigo btn-sm"
+                      onclick="desativar(${p.idProduto}, '${p.descricao.replace(/'/g,"\\'")}')">
+                      Desativar
+                    </button>` : ''}
+                </td>
+              </tr>`).join('');
+      } catch(err) { notificar(err.message, 'erro'); }
+    }
+
+    async function abrirFormulario(produto = null) {
+      await carregarCategorias('prod-categoria', produto?.idCategoria);
+      document.getElementById('prod-id').value          = produto?.idProduto || '';
+      document.getElementById('prod-descricao').value   = produto?.descricao || '';
+      document.getElementById('prod-marca').value       = produto?.marca || '';
+      document.getElementById('prod-codbarras').value   = produto?.codBarras || '';
+      document.getElementById('prod-estoque-min').value = produto?.estoqueMinimo ?? 0;
+      document.getElementById('titulo-form').textContent = produto ? 'Editar produto' : 'Novo produto';
+      mostrarElemento('painel-form');
+      focarElemento('prod-descricao');
+    }
+
+    function fecharFormulario() {
+      ocultarElemento('painel-form');
+      limparFormulario('form-produto');
+      focarElemento('btn-novo');
+    }
+
+    document.getElementById('form-produto').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id  = document.getElementById('prod-id').value;
+      const cat = document.getElementById('prod-categoria').value;
+      if (!cat) { notificar('Selecione uma categoria.', 'aviso'); focarElemento('prod-categoria'); return; }
+
+      const body = {
+        descricao:     document.getElementById('prod-descricao').value.trim(),
+        marca:         document.getElementById('prod-marca').value.trim() || null,
+        codBarras:     document.getElementById('prod-codbarras').value.trim() || null,
+        idCategoria:   Number(cat),
+        estoqueMinimo: Number(document.getElementById('prod-estoque-min').value),
+      };
+      try {
+        if (id) await api.put(`/produtos/${id}`, body);
+        else    await api.post('/produtos/', body);
+        notificar(id ? 'Produto atualizado.' : 'Produto incluído.', 'sucesso');
+        fecharFormulario();
+        carregar();
+      } catch(err) { notificar(err.message, 'erro'); }
+    });
+
+    async function desativar(id, nome) {
+      if (!confirm(`Desativar "${nome}"? O produto não será excluído.`)) return;
+      try {
+        await api.delete(`/produtos/${id}`);
+        notificar('Produto desativado.', 'sucesso');
+        carregar();
+      } catch(err) { notificar(err.message, 'erro'); }
+    }
+
+    carregar();
+  </script>
+</body>
+</html>

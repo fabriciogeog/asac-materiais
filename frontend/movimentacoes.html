@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Movimentações — ASAC Materiais</title>
+  <link rel="stylesheet" href="/ui/css/style.css">
+</head>
+<body>
+  <a href="#conteudo-principal" class="skip-link">Ir para o conteúdo principal</a>
+
+  <header role="banner">
+    <h1>ASAC — Controle de Materiais</h1>
+    <nav aria-label="Menu principal" id="nav-principal"></nav>
+  </header>
+
+  <main id="conteudo-principal">
+    <h2>Movimentações de Estoque</h2>
+
+    <!-- Formulário de registro -->
+    <section aria-labelledby="titulo-registro" class="secao">
+      <div class="painel-formulario">
+        <h3 id="titulo-registro">Registrar movimentação</h3>
+        <form id="form-mov" novalidate>
+          <div class="linha-campos">
+            <div class="campo">
+              <label for="mov-produto">Produto <abbr title="obrigatório">*</abbr></label>
+              <select id="mov-produto" required aria-required="true">
+                <option value="">Selecione um produto</option>
+              </select>
+            </div>
+            <div class="campo">
+              <label for="mov-tipo">Tipo <abbr title="obrigatório">*</abbr></label>
+              <select id="mov-tipo" required aria-required="true">
+                <option value="">Selecione o tipo</option>
+                <option value="ENTRADA">Entrada</option>
+                <option value="SAIDA">Saída</option>
+                <option value="AJUSTE">Ajuste</option>
+                <option value="DESCARTE">Descarte</option>
+              </select>
+            </div>
+            <div class="campo">
+              <label for="mov-qtd">Quantidade <abbr title="obrigatório">*</abbr></label>
+              <input type="number" id="mov-qtd" min="0.01" step="0.01"
+                     required aria-required="true">
+            </div>
+            <div class="campo">
+              <label for="mov-obs">Observação</label>
+              <input type="text" id="mov-obs" maxlength="300"
+                     aria-describedby="obs-dica">
+              <span class="erro-campo" id="obs-dica" style="color:var(--cor-desabilitado)">
+                Obrigatória para Ajuste e Descarte.
+              </span>
+            </div>
+          </div>
+          <div class="acoes-formulario">
+            <button type="submit" class="btn btn-primario">Registrar</button>
+            <button type="button" class="btn btn-secundario" onclick="limparFormulario('form-mov')">
+              Limpar
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- Filtros do histórico -->
+    <section aria-labelledby="titulo-historico" class="secao">
+      <div class="barra-tabela">
+        <h3 id="titulo-historico">Histórico</h3>
+        <div style="display:flex; gap:.75rem; align-items:flex-end; flex-wrap:wrap;">
+          <div class="campo" style="margin:0">
+            <label for="filtro-produto" style="font-size:.9rem">Filtrar por produto</label>
+            <select id="filtro-produto" onchange="carregarHistorico()" style="padding:.35rem .6rem">
+              <option value="">Todos</option>
+            </select>
+          </div>
+          <button class="btn btn-secundario btn-sm" onclick="carregarHistorico()">Atualizar</button>
+        </div>
+      </div>
+
+      <div class="tabela-container">
+        <table>
+          <caption>Histórico de movimentações (mais recentes primeiro)</caption>
+          <thead>
+            <tr>
+              <th scope="col">Data / Hora</th>
+              <th scope="col">Produto</th>
+              <th scope="col">Tipo</th>
+              <th scope="col">Quantidade</th>
+              <th scope="col">Observação</th>
+            </tr>
+          </thead>
+          <tbody id="lista-mov">
+            <tr><td colspan="5">Carregando…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <div role="alert" id="notificacao" hidden class="notificacao"></div>
+
+  <script src="/ui/js/api.js"></script>
+  <script src="/ui/js/app.js"></script>
+  <script>
+    exigirPerfil('ADMINISTRADOR', 'OPERADOR');
+    renderizarNav('movimentacoes');
+
+    let _produtos = {};
+
+    async function inicializar() {
+      await Promise.all([
+        carregarProdutos('mov-produto'),
+        carregarProdutos('filtro-produto'),
+      ]);
+      // Copia opções do mov-produto no filtro com "Todos" no início
+      const prods = await api.get('/produtos/?apenas_ativos=true');
+      _produtos = Object.fromEntries(prods.map(p => [p.idProduto, p.descricao]));
+
+      carregarHistorico();
+    }
+
+    async function carregarHistorico() {
+      const idProd = document.getElementById('filtro-produto').value;
+      const url = `/movimentacoes/${idProd ? `?idProduto=${idProd}` : ''}`;
+      try {
+        const movs = await api.get(url);
+        const tbody = document.getElementById('lista-mov');
+        tbody.innerHTML = movs.length === 0
+          ? '<tr><td colspan="5">Nenhuma movimentação encontrada.</td></tr>'
+          : movs.map(m => `
+              <tr>
+                <td>${formatarData(m.dataMov)}</td>
+                <td>${_produtos[m.idProduto] || m.idProduto}</td>
+                <td><span class="badge badge-${['ENTRADA','AJUSTE'].includes(m.tipoMov) ? 'entrada' : 'saida'}">
+                    ${m.tipoMov}
+                  </span></td>
+                <td>${formatarNumero(m.quantMov)}</td>
+                <td>${m.observacao || '—'}</td>
+              </tr>`).join('');
+      } catch(err) { notificar(err.message, 'erro'); }
+    }
+
+    document.getElementById('form-mov').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const idProduto = document.getElementById('mov-produto').value;
+      const tipoMov   = document.getElementById('mov-tipo').value;
+      const quantMov  = document.getElementById('mov-qtd').value;
+      const observacao = document.getElementById('mov-obs').value.trim();
+
+      if (!idProduto) { notificar('Selecione um produto.', 'aviso'); focarElemento('mov-produto'); return; }
+      if (!tipoMov)   { notificar('Selecione o tipo.', 'aviso');    focarElemento('mov-tipo');    return; }
+      if (!quantMov || Number(quantMov) <= 0) {
+        notificar('Informe uma quantidade maior que zero.', 'aviso');
+        focarElemento('mov-qtd'); return;
+      }
+      if (['AJUSTE','DESCARTE'].includes(tipoMov) && !observacao) {
+        notificar('Observação é obrigatória para Ajuste e Descarte.', 'aviso');
+        focarElemento('mov-obs'); return;
+      }
+
+      const body = {
+        idProduto: Number(idProduto),
+        tipoMov,
+        quantMov:  Number(quantMov),
+        observacao: observacao || null,
+      };
+      try {
+        await api.post('/movimentacoes/', body);
+        notificar('Movimentação registrada com sucesso.', 'sucesso');
+        limparFormulario('form-mov');
+        focarElemento('mov-produto');
+        carregarHistorico();
+      } catch(err) { notificar(err.message, 'erro'); }
+    });
+
+    inicializar();
+  </script>
+</body>
+</html>

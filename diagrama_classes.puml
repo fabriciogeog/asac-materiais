@@ -1,0 +1,110 @@
+@startuml Sistema de Controle de Materiais de Consumo
+
+title Sistema de Controle de Materiais de Consumo\nDiagrama de Classes UML
+
+skinparam classAttributeIconSize 0
+skinparam classFontStyle bold
+skinparam packageStyle rectangle
+skinparam linetype ortho
+
+' ──────────────────────────────────────────
+' Enumerações
+' ──────────────────────────────────────────
+
+enum TipoMovimentacao {
+  ENTRADA
+  SAIDA
+  AJUSTE
+  DESCARTE
+}
+
+enum Perfil {
+  ADMINISTRADOR
+  OPERADOR
+  CONSULTA
+}
+
+' ──────────────────────────────────────────
+' Classes principais
+' ──────────────────────────────────────────
+
+class Categoria {
+  + idCategoria : int <<PK>>
+  + nome        : string
+  + descricao   : string
+  --
+  + incluir()   : void
+  + alterar()   : void
+  + excluir()   : void
+  + buscar()    : Categoria
+}
+
+class Produto {
+  + idProduto      : int <<PK>>
+  + codBarras      : string
+  + descricao      : string
+  + marca          : string
+  + idCategoria    : int <<FK>>
+  + estoqueMinimo  : decimal
+  ' saldoAtual é snapshot atualizado a cada movimentação;
+  ' pode ser omitido e calculado via SUM(Movimentacao)
+  + saldoAtual     : decimal
+  + produtoAtivo   : bool
+  + dataCadastro   : date
+  --
+  + incluir()      : void
+  + alterar()      : void
+  + excluir()      : void
+  + buscar()       : Produto
+  + calcularSaldo(): decimal
+}
+
+class Movimentacao {
+  + idMovimentacao : int <<PK>>
+  + tipoMov        : TipoMovimentacao
+  + dataMov        : datetime
+  + quantMov       : decimal
+  + idProduto      : int <<FK>>
+  + idUsuario      : int <<FK>>
+  + observacao     : string
+  --
+  + inserir()      : void
+  + buscar()       : Movimentacao
+}
+
+class Usuario {
+  + idUsuario     : int <<PK>>
+  + nome          : string
+  + login         : string
+  + senhaHash     : string
+  + perfil        : Perfil
+  + usuarioAtivo  : bool
+  + dataCadastro  : date
+  --
+  + cadastrar()   : void
+  + alterar()     : void
+  + desativar()   : void
+  + buscar()      : Usuario
+  + autenticar()  : bool
+}
+
+' ──────────────────────────────────────────
+' Relacionamentos
+' ──────────────────────────────────────────
+
+' Um Produto pertence a uma Categoria; uma Categoria agrupa muitos Produtos
+Categoria "1" o-- "0..*" Produto : categoriza >
+
+' Um Produto aparece em muitas Movimentações
+Produto "1" o-- "1..*" Movimentacao : registra >
+
+' Um Usuario realiza muitas Movimentações
+Usuario "1" o-- "1..*" Movimentacao : realiza >
+
+' Movimentacao usa o enum TipoMovimentacao
+Movimentacao ..> TipoMovimentacao : <<usa>>
+
+' Usuario usa o enum Perfil
+Usuario ..> Perfil : <<usa>>
+
+@enduml

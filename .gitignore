@@ -1,0 +1,31 @@
+# Ambiente virtual Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Variáveis de ambiente (segredos — NUNCA commitar)
+.env
+
+# Bancos de dados de runtime
+*.db
+*.sqlite3
+
+# Outputs pesados do treinamento YOLO
+detect/
+result.jpg
+
+# Dataset (imagens do Roboflow — manter local)
+dataset/
+
+# Modelo base YOLO (binário grande)
+yolo26n.pt
+
+# Arquivos de SO e editores
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Memória do Claude Code (local)
+.claude/
