@@ -58,7 +58,7 @@ body {
 header {
   background: linear-gradient(90deg, #0f2548 0%, var(--cor-primaria) 100%);
   color: #fff;
-  padding: .6rem var(--espc);
+  padding: .4rem var(--espc);
   display: flex;
   align-items: center;
   gap: 1.5rem;
@@ -76,9 +76,8 @@ header {
 }
 
 .logo-img {
-  height: 42px;
+  height: 84px;
   width: auto;
-  background: #fff;
   border-radius: var(--raio);
   padding: 2px 4px;
 }
