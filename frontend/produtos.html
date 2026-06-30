@@ -43,7 +43,14 @@
             </div>
             <div class="campo">
               <label for="prod-codbarras">Código de barras</label>
-              <input type="text" id="prod-codbarras" maxlength="50">
+              <div class="campo-com-acao">
+                <input type="text" id="prod-codbarras" maxlength="50">
+                <button type="button" class="btn btn-secundario btn-sm"
+                        onclick="escanearCodigo()"
+                        aria-label="Escanear código de barras com a câmera">
+                  Escanear
+                </button>
+              </div>
             </div>
             <div class="campo">
               <label for="prod-categoria">Categoria <abbr title="obrigatório">*</abbr></label>
@@ -90,6 +97,7 @@
 
   <script src="/ui/js/api.js"></script>
   <script src="/ui/js/app.js"></script>
+  <script src="/ui/js/barcode-scanner.js"></script>
   <script>
     exigirAuth();
     renderizarNav('produtos');
@@ -180,6 +188,33 @@
         notificar('Produto desativado.', 'sucesso');
         carregar();
       } catch(err) { notificar(err.message, 'erro'); }
+    }
+
+    function escanearCodigo() {
+      abrirScannerModal(function (resultado) {
+        document.getElementById('prod-codbarras').value = resultado.codBarras;
+
+        if (resultado.encontrado_local) {
+          notificar(
+            `Produto "${resultado.descricao}" já cadastrado (código ${resultado.codBarras}).`,
+            'aviso'
+          );
+          return;
+        }
+        if (resultado.descricao) {
+          document.getElementById('prod-descricao').value = resultado.descricao;
+        }
+        if (resultado.marca) {
+          document.getElementById('prod-marca').value = resultado.marca;
+        }
+        notificar(
+          resultado.descricao
+            ? 'Dados preenchidos pela API. Verifique e complete o cadastro.'
+            : 'Código capturado. Produto não encontrado na API — preencha os dados manualmente.',
+          resultado.descricao ? 'sucesso' : 'aviso'
+        );
+        focarElemento('prod-categoria');
+      });
     }
 
     carregar();

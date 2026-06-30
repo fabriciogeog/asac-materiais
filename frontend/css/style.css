@@ -392,3 +392,107 @@ tbody td {
 
 /* ── Separador de seção ──────────────────────────────────────── */
 .secao { margin-bottom: 2.5rem; }
+
+/* ── Campo com botão de ação inline (ex.: código de barras) ──── */
+.campo-com-acao {
+  display: flex;
+  gap: .5rem;
+  align-items: flex-start;
+}
+.campo-com-acao input { flex: 1; }
+
+/* ── Painel de info pós-scan ─────────────────────────────────── */
+.produto-info {
+  background: var(--cor-sucesso-bg);
+  color: var(--cor-sucesso-txt);
+  border: 1px solid var(--cor-sucesso-txt);
+  border-radius: var(--raio);
+  padding: .5rem .85rem;
+  font-size: .9rem;
+  margin-bottom: .75rem;
+}
+
+/* ── Modal overlay ───────────────────────────────────────────── */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .55);
+  z-index: 2000;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-caixa {
+  background: #fff;
+  border-radius: var(--raio);
+  padding: 1.5rem;
+  width: min(480px, 95vw);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .35);
+}
+
+.modal-caixa h3 {
+  color: var(--cor-primaria);
+  margin-bottom: .5rem;
+}
+
+/* ── Scanner de câmera ───────────────────────────────────────── */
+.scanner-instrucao {
+  font-size: .9rem;
+  color: var(--cor-desabilitado);
+  margin-bottom: 1rem;
+}
+
+.scanner-video-wrapper {
+  background: #000;
+  border-radius: var(--raio);
+  overflow: hidden;
+  margin-bottom: .75rem;
+  aspect-ratio: 4 / 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#scanner-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.scanner-status {
+  min-height: 1.4em;
+  font-size: .9rem;
+  font-weight: 600;
+  color: var(--cor-primaria);
+  margin-bottom: .75rem;
+}
+
+.scanner-buscando::before {
+  content: '';
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  background: var(--cor-primaria);
+  border-radius: 50%;
+  margin-right: .5rem;
+  vertical-align: middle;
+  animation: scanner-pulsar 1s ease-in-out infinite;
+}
+
+@keyframes scanner-pulsar {
+  0%, 100% { opacity: 1;  transform: scale(1); }
+  50%       { opacity: .3; transform: scale(.6); }
+}
+
+/* Mira sobre o vídeo */
+.scanner-video-wrapper { position: relative; }
+
+.scanner-mira {
+  position: absolute;
+  inset: 15%;
+  border: 2px solid rgba(255, 200, 0, .8);
+  border-radius: 4px;
+  box-shadow: 0 0 0 2000px rgba(0, 0, 0, .25);
+  pointer-events: none;
+}

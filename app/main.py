@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.database import Base, engine
-from app.routers import auth, categorias, movimentacoes, produtos, usuarios
+from app.routers import auth, barcode, categorias, movimentacoes, produtos, usuarios
 
 app = FastAPI(
     title="ASAC — Controle de Materiais de Consumo",
@@ -25,6 +25,7 @@ app.include_router(categorias.router)
 app.include_router(produtos.router)
 app.include_router(usuarios.router)
 app.include_router(movimentacoes.router)
+app.include_router(barcode.router)
 
 app.mount("/ui", StaticFiles(directory="frontend", html=True), name="frontend")
 

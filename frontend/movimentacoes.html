@@ -22,6 +22,14 @@
       <div class="painel-formulario">
         <h3 id="titulo-registro">Registrar movimentação</h3>
         <form id="form-mov" novalidate>
+          <div class="acoes-formulario" style="margin-bottom:1rem">
+            <button type="button" class="btn btn-secundario" id="btn-scanner"
+                    onclick="iniciarScan()">
+              Escanear produto
+            </button>
+          </div>
+          <div id="produto-info" hidden class="produto-info"
+               role="status" aria-live="polite"></div>
           <div class="linha-campos">
             <div class="campo">
               <label for="mov-produto">Produto <abbr title="obrigatório">*</abbr></label>
@@ -55,7 +63,7 @@
           </div>
           <div class="acoes-formulario">
             <button type="submit" class="btn btn-primario">Registrar</button>
-            <button type="button" class="btn btn-secundario" onclick="limparFormulario('form-mov')">
+            <button type="button" class="btn btn-secundario" onclick="limparMov()">
               Limpar
             </button>
           </div>
@@ -102,6 +110,7 @@
 
   <script src="/ui/js/api.js"></script>
   <script src="/ui/js/app.js"></script>
+  <script src="/ui/js/barcode-scanner.js"></script>
   <script>
     exigirPerfil('ADMINISTRADOR', 'OPERADOR');
     renderizarNav('movimentacoes');
@@ -173,6 +182,40 @@
         carregarHistorico();
       } catch(err) { notificar(err.message, 'erro'); }
     });
+
+    function limparMov() {
+      limparFormulario('form-mov');
+      ocultarElemento('produto-info');
+      focarElemento('btn-scanner');
+    }
+
+    function iniciarScan() {
+      abrirScannerModal(function (resultado) {
+        if (resultado.encontrado_local) {
+          if (!resultado.produtoAtivo) {
+            notificar(
+              `Produto "${resultado.descricao}" está inativo. Ative-o antes de movimentar.`,
+              'aviso'
+            );
+            return;
+          }
+          const sel = document.getElementById('mov-produto');
+          sel.value = resultado.idProduto;
+          const info = document.getElementById('produto-info');
+          info.textContent =
+            `Produto: ${resultado.descricao}` +
+            (resultado.marca ? ` (${resultado.marca})` : '') +
+            ` — Saldo atual: ${formatarNumero(resultado.saldoAtual)}`;
+          mostrarElemento('produto-info');
+          focarElemento('mov-tipo');
+        } else {
+          notificar(
+            `Código "${resultado.codBarras}" não cadastrado. Cadastre o produto em Produtos antes de movimentar.`,
+            'aviso'
+          );
+        }
+      });
+    }
 
     inicializar();
   </script>

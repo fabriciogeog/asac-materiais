@@ -35,7 +35,7 @@ function cabecalhos(isForm = false) {
 }
 
 async function apiFetch(caminho, opcoes = {}) {
-    const isForm = opcoes.body instanceof URLSearchParams;
+    const isForm = opcoes.body instanceof URLSearchParams || opcoes.body instanceof FormData;
     let resp;
     try {
         resp = await fetch(API_BASE + caminho, {
@@ -59,7 +59,9 @@ async function apiFetch(caminho, opcoes = {}) {
         const msg = Array.isArray(dados.detail)
             ? dados.detail.map(e => e.msg).join('; ')
             : (dados.detail || 'Erro desconhecido');
-        throw new Error(msg);
+        const err = new Error(msg);
+        err.status = resp.status;
+        throw err;
     }
     return dados;
 }
