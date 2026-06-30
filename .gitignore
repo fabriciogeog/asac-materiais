@@ -6,6 +6,7 @@ __pycache__/
 
 # Variáveis de ambiente (segredos — NUNCA commitar)
 .env
+.env.example
 
 # Bancos de dados de runtime
 *.db

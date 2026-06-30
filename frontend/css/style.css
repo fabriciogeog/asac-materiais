@@ -71,6 +71,12 @@ header h1 {
   white-space: nowrap;
 }
 
+nav[aria-label="Menu principal"] {
+  display: flex;
+  align-items: center;
+  flex: 1;
+}
+
 nav[aria-label="Menu principal"] ul {
   list-style: none;
   display: flex;
@@ -102,6 +108,16 @@ nav[aria-label="Menu principal"] a:focus-visible {
   align-items: center;
   gap: .75rem;
   font-size: .9rem;
+  color: #fff;
+}
+
+.nav-usuario .btn-secundario {
+  color: #fff;
+  border-color: rgba(255,255,255,.7);
+}
+
+.nav-usuario .btn-secundario:hover {
+  background: rgba(255,255,255,.15);
 }
 
 /* ── Conteúdo principal ────────────────────────────────────── */
