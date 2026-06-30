@@ -56,19 +56,47 @@ body {
 
 /* ── Cabeçalho e navegação ─────────────────────────────────── */
 header {
-  background: var(--cor-primaria);
+  background: linear-gradient(90deg, #0f2548 0%, var(--cor-primaria) 100%);
   color: #fff;
-  padding: .75rem var(--espc);
+  padding: .6rem var(--espc);
   display: flex;
   align-items: center;
-  gap: 2rem;
+  gap: 1.5rem;
   flex-wrap: wrap;
+  box-shadow: 0 2px 6px rgba(0,0,0,.25);
 }
 
-header h1 {
-  font-size: 1.1rem;
+/* Logo no cabeçalho */
+.logo-link {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.logo-img {
+  height: 42px;
+  width: auto;
+  background: #fff;
+  border-radius: var(--raio);
+  padding: 2px 4px;
+}
+
+.logo-nome {
+  color: #fff;
+  font-size: 1.15rem;
   font-weight: 700;
+  letter-spacing: .03em;
   white-space: nowrap;
+}
+
+.logo-subtitulo {
+  color: rgba(255,255,255,.7);
+  font-size: .7rem;
+  display: block;
+  line-height: 1.1;
+  letter-spacing: .02em;
 }
 
 nav[aria-label="Menu principal"] {
@@ -345,24 +373,26 @@ tbody td {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #eef2f8;
+  background: linear-gradient(135deg, #0f2548 0%, #1a3d6e 60%, #2a5fa8 100%);
 }
 
 .login-caixa {
   background: #fff;
-  border: 1px solid #ccc;
-  border-radius: var(--raio);
-  padding: 2rem;
+  border-radius: 8px;
+  padding: 2.5rem 2rem;
   width: 100%;
-  max-width: 380px;
-  box-shadow: 0 4px 16px rgba(0,0,0,.1);
+  max-width: 400px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.35);
 }
 
-.login-caixa h1 {
-  font-size: 1.25rem;
-  color: var(--cor-primaria);
-  margin-bottom: 1.5rem;
+.login-logo {
   text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.login-logo-img {
+  height: 110px;
+  width: auto;
 }
 
 /* ── Painel colapsável (formulário de adição/edição) ────────── */
@@ -398,8 +428,12 @@ tbody td {
   display: flex;
   gap: .5rem;
   align-items: flex-start;
+  min-width: 0;
 }
-.campo-com-acao input { flex: 1; }
+.campo-com-acao input {
+  flex: 1;
+  min-width: 0;   /* permite encolher dentro do grid */
+}
 
 /* ── Painel de info pós-scan ─────────────────────────────────── */
 .produto-info {

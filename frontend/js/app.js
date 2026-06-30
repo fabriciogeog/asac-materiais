@@ -29,11 +29,16 @@ function renderizarNav(paginaAtual) {
     if (!nav) return;
 
     const itens = [
-        { href: '/ui/index.html',          texto: 'Início',         pagina: 'index' },
-        { href: '/ui/produtos.html',        texto: 'Produtos',       pagina: 'produtos' },
-        { href: '/ui/movimentacoes.html',   texto: 'Movimentações',  pagina: 'movimentacoes' },
-        { href: '/ui/categorias.html',      texto: 'Categorias',     pagina: 'categorias' },
+        { href: '/ui/index.html',      texto: 'Início',    pagina: 'index' },
+        { href: '/ui/produtos.html',   texto: 'Produtos',  pagina: 'produtos' },
     ];
+
+    if (perfil !== 'CONSULTA') {
+        itens.push(
+            { href: '/ui/movimentacoes.html', texto: 'Movimentações', pagina: 'movimentacoes' },
+            { href: '/ui/categorias.html',    texto: 'Categorias',    pagina: 'categorias'    },
+        );
+    }
 
     if (perfil === 'ADMINISTRADOR') {
         itens.push({ href: '/ui/usuarios.html', texto: 'Usuários', pagina: 'usuarios' });
