@@ -39,10 +39,18 @@
                      autocomplete="off" maxlength="60">
             </div>
             <div class="campo" id="campo-senha-wrap">
-              <label for="usr-senha">Senha <abbr title="obrigatório">*</abbr></label>
+              <label for="usr-senha">Senha <abbr title="obrigatório" id="lbl-senha-obrig">*</abbr></label>
               <input type="password" id="usr-senha" autocomplete="new-password"
                      aria-describedby="dica-senha" minlength="8">
               <span class="erro-campo" id="dica-senha" style="color:var(--cor-desabilitado)">
+                Mínimo de 8 caracteres.
+              </span>
+            </div>
+            <div class="campo" id="campo-nova-senha-wrap" hidden>
+              <label for="usr-nova-senha">Nova senha <span style="color:var(--cor-desabilitado);font-weight:400">(deixe em branco para não alterar)</span></label>
+              <input type="password" id="usr-nova-senha" autocomplete="new-password"
+                     aria-describedby="dica-nova-senha" minlength="8">
+              <span class="erro-campo" id="dica-nova-senha" style="color:var(--cor-desabilitado)">
                 Mínimo de 8 caracteres.
               </span>
             </div>
@@ -141,12 +149,13 @@
       document.getElementById('usr-perfil').value = perfil;
       document.getElementById('usr-login').value  = '';
       document.getElementById('usr-senha').value  = '';
+      document.getElementById('usr-nova-senha').value = '';
       document.getElementById('titulo-form').textContent = 'Editar usuário';
-      // Na edição, login e senha não são alterados por aqui
       document.getElementById('usr-login').required = false;
       document.getElementById('usr-senha').required = false;
       document.getElementById('campo-login-wrap').setAttribute('hidden', '');
       document.getElementById('campo-senha-wrap').setAttribute('hidden', '');
+      document.getElementById('campo-nova-senha-wrap').removeAttribute('hidden');
       mostrarElemento('painel-form');
       focarElemento('usr-nome');
     }
@@ -155,6 +164,7 @@
       ocultarElemento('painel-form');
       document.getElementById('campo-login-wrap').removeAttribute('hidden');
       document.getElementById('campo-senha-wrap').removeAttribute('hidden');
+      document.getElementById('campo-nova-senha-wrap').setAttribute('hidden', '');
       limparFormulario('form-usuario');
       focarElemento('btn-novo');
     }
@@ -169,7 +179,13 @@
 
       try {
         if (id) {
-          await api.put(`/usuarios/${id}`, { nome, perfil });
+          const payload = { nome, perfil };
+          const novaSenha = document.getElementById('usr-nova-senha').value;
+          if (novaSenha) {
+            if (novaSenha.length < 8) { notificar('Nova senha muito curta (mínimo 8 caracteres).', 'aviso'); focarElemento('usr-nova-senha'); return; }
+            payload.senha = novaSenha;
+          }
+          await api.put(`/usuarios/${id}`, payload);
           notificar('Usuário atualizado.', 'sucesso');
         } else {
           const login = document.getElementById('usr-login').value.trim();

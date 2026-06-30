@@ -47,7 +47,10 @@ def alterar(id: int, dados: UsuarioUpdate, _: Usuario = Depends(_admin), db: Ses
     if not usuario:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuário não encontrado")
     for campo, valor in dados.model_dump(exclude_none=True).items():
-        setattr(usuario, campo, valor.value if hasattr(valor, "value") else valor)
+        if campo == "senha":
+            usuario.senhaHash = auth.criar_hash(valor)
+        else:
+            setattr(usuario, campo, valor.value if hasattr(valor, "value") else valor)
     db.commit()
     db.refresh(usuario)
     return usuario

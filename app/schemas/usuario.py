@@ -20,6 +20,14 @@ class UsuarioCreate(BaseModel):
 class UsuarioUpdate(BaseModel):
     nome: str | None = None
     perfil: PerfilEnum | None = None
+    senha: str | None = None
+
+    @field_validator("senha")
+    @classmethod
+    def senha_minima(cls, v: str | None) -> str | None:
+        if v is not None and len(v) < 8:
+            raise ValueError("A senha deve ter ao menos 8 caracteres")
+        return v
 
 
 class UsuarioResponse(BaseModel):
