@@ -28,5 +28,8 @@ Thumbs.db
 *.swp
 *.swo
 
+# Logs de execução em background (nohup)
+nohup.out
+
 # Memória do Claude Code (local)
 .claude/
