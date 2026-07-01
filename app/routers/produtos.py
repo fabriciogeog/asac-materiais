@@ -73,3 +73,15 @@ def desativar(id: int, _: Usuario = Depends(_gestao), db: Session = Depends(get_
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Produto não encontrado")
     produto.produtoAtivo = False
     db.commit()
+
+
+@router.post("/{id}/ativar", response_model=ProdutoResponse)
+def ativar(id: int, _: Usuario = Depends(_gestao), db: Session = Depends(get_db)):
+    """Reativa um produto previamente desativado."""
+    produto = db.get(Produto, id)
+    if not produto:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Produto não encontrado")
+    produto.produtoAtivo = True
+    db.commit()
+    db.refresh(produto)
+    return produto

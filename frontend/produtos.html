@@ -138,7 +138,11 @@
                     <button class="btn btn-perigo btn-sm"
                       onclick="desativar(${p.idProduto}, '${p.descricao.replace(/'/g,"\\'")}')">
                       Desativar
-                    </button>` : ''}
+                    </button>` : `
+                    <button class="btn btn-sucesso btn-sm"
+                      onclick="ativar(${p.idProduto}, '${p.descricao.replace(/'/g,"\\'")}')">
+                      Ativar
+                    </button>`}
                 </td>
               </tr>`).join('');
       } catch(err) { notificar(err.message, 'erro'); }
@@ -189,6 +193,15 @@
       try {
         await api.delete(`/produtos/${id}`);
         notificar('Produto desativado.', 'sucesso');
+        carregar();
+      } catch(err) { notificar(err.message, 'erro'); }
+    }
+
+    async function ativar(id, nome) {
+      if (!confirm(`Reativar "${nome}"?`)) return;
+      try {
+        await api.post(`/produtos/${id}/ativar`);
+        notificar('Produto reativado.', 'sucesso');
         carregar();
       } catch(err) { notificar(err.message, 'erro'); }
     }

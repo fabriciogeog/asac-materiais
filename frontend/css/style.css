@@ -192,6 +192,13 @@ h3 { font-size: 1.1rem; margin-bottom: .75rem; }
 }
 .btn-perigo:hover { background: #f5cccc; }
 
+.btn-sucesso {
+  background: var(--cor-sucesso-bg);
+  color: var(--cor-sucesso-txt);
+  border-color: var(--cor-sucesso-txt);
+}
+.btn-sucesso:hover { background: #d3ecdd; }
+
 .btn-sm { padding: .3rem .65rem; font-size: .85rem; }
 
 /* ── Formulários ───────────────────────────────────────────── */
