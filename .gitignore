@@ -31,5 +31,8 @@ Thumbs.db
 # Logs de execução em background (nohup)
 nohup.out
 
+# Certificados TLS locais (mkcert) — gerados por máquina, não commitar
+certs/
+
 # Memória do Claude Code (local)
 .claude/

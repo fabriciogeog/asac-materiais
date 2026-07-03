@@ -93,6 +93,43 @@ A documentação interativa da API está disponível em **http://localhost:8000/
 
 ---
 
+## Acesso pela rede local com câmera (celular)
+
+Navegadores só liberam a câmera (`getUserMedia`, usada no scanner de código de barras) em **contexto seguro**: HTTPS, ou `http://localhost`. Acessando pelo IP da rede local em HTTP puro (ex.: `http://192.168.0.10:8000`), a câmera não fica disponível — isso é regra do navegador, não limitação do sistema. Para usar o scanner pelo celular dentro do depósito, é preciso servir a aplicação via HTTPS.
+
+### 1. Gerar certificado local com [mkcert](https://github.com/FiloSottile/mkcert)
+
+```bash
+sudo apt install mkcert libnss3-tools   # instala o mkcert e a dependência NSS
+mkcert -install                          # cria e instala a CA local (pede senha sudo)
+
+mkdir -p certs
+mkcert -cert-file certs/cert.pem -key-file certs/key.pem \
+  <IP_DA_REDE_LOCAL> localhost 127.0.0.1  # ex.: 192.168.0.10
+```
+
+A pasta `certs/` está no `.gitignore` — os certificados são gerados por máquina e nunca devem ser commitados.
+
+### 2. Subir o servidor com HTTPS
+
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port 8000 \
+  --ssl-keyfile certs/key.pem --ssl-certfile certs/cert.pem
+```
+
+Acesse do celular em `https://<IP_DA_REDE_LOCAL>:8000/ui/login.html`.
+
+### 3. Confiar no certificado a partir do celular
+
+O certificado é assinado pela CA local do mkcert, que o computador já confia — mas o celular ainda não. Transfira o arquivo `rootCA.pem` (mostrado por `mkcert -CAROOT`) para o celular (e-mail, Drive, cabo) e instale como certificado confiável:
+
+- **Android**: Ajustes → Segurança → Criptografia e credenciais → Instalar um certificado → CA... e selecione o `rootCA.pem`.
+- **iPhone**: instale o perfil e depois ative em Ajustes → Geral → Sobre → Configurações de confiança de certificado.
+
+Feito isso uma vez por aparelho, o cadeado fica válido normalmente e a câmera passa a funcionar no Chrome e no Firefox do celular.
+
+---
+
 ## Estrutura do projeto
 
 ```
