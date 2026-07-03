@@ -12,6 +12,26 @@ router = APIRouter(prefix="/usuarios", tags=["Usuários"])
 _admin = require_perfil(PerfilEnum.ADMINISTRADOR)
 
 
+def _bloquear_ultimo_admin(usuario: Usuario, db: Session, acao: str) -> None:
+    """Impede desativar/rebaixar o último administrador ativo do sistema."""
+    if usuario.perfil != PerfilEnum.ADMINISTRADOR.value or not usuario.usuarioAtivo:
+        return
+    outros_admins_ativos = (
+        db.query(Usuario)
+        .filter(
+            Usuario.perfil == PerfilEnum.ADMINISTRADOR.value,
+            Usuario.usuarioAtivo.is_(True),
+            Usuario.idUsuario != usuario.idUsuario,
+        )
+        .count()
+    )
+    if outros_admins_ativos == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Não é possível {acao} o último administrador ativo do sistema.",
+        )
+
+
 @router.get("/", response_model=list[UsuarioResponse])
 def listar(_: Usuario = Depends(_admin), db: Session = Depends(get_db)):
     return db.query(Usuario).all()
@@ -46,6 +66,8 @@ def alterar(id: int, dados: UsuarioUpdate, _: Usuario = Depends(_admin), db: Ses
     usuario = db.get(Usuario, id)
     if not usuario:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuário não encontrado")
+    if dados.perfil is not None and dados.perfil.value != PerfilEnum.ADMINISTRADOR.value:
+        _bloquear_ultimo_admin(usuario, db, "rebaixar")
     for campo, valor in dados.model_dump(exclude_none=True).items():
         if campo == "senha":
             usuario.senhaHash = auth.criar_hash(valor)
@@ -57,10 +79,16 @@ def alterar(id: int, dados: UsuarioUpdate, _: Usuario = Depends(_admin), db: Ses
 
 
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
-def desativar(id: int, _: Usuario = Depends(_admin), db: Session = Depends(get_db)):
+def desativar(id: int, usuario_atual: Usuario = Depends(_admin), db: Session = Depends(get_db)):
     """Desativa o usuário sem excluir o registro (RN-04)."""
+    if id == usuario_atual.idUsuario:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Não é possível desativar a própria conta.",
+        )
     usuario = db.get(Usuario, id)
     if not usuario:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuário não encontrado")
+    _bloquear_ultimo_admin(usuario, db, "desativar")
     usuario.usuarioAtivo = False
     db.commit()
