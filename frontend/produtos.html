@@ -23,6 +23,11 @@
       <button class="btn btn-primario" id="btn-novo" onclick="abrirFormulario()">
         + Novo produto
       </button>
+      <label for="busca-produto" style="display:flex; align-items:center; gap:.4rem; font-size:.9rem;">
+        Buscar
+        <input type="search" id="busca-produto" placeholder="Descrição, marca ou código de barras…"
+               oninput="renderizarTabela()" style="min-width:16rem">
+      </label>
       <label style="margin-left:auto; display:flex; align-items:center; gap:.4rem; font-size:.9rem;">
         <input type="checkbox" id="chk-inativos" onchange="carregar()">
         Mostrar inativos
@@ -106,6 +111,7 @@
     renderizarNav('produtos');
 
     let _categorias = {};
+    let _produtosCache = [];
 
     async function carregar() {
       try {
@@ -115,37 +121,48 @@
           api.get('/categorias/'),
         ]);
         _categorias = Object.fromEntries(cats.map(c => [c.idCategoria, c.nome]));
-
-        const tbody = document.getElementById('lista-produtos');
-        tbody.innerHTML = prods.length === 0
-          ? '<tr><td colspan="7">Nenhum produto encontrado.</td></tr>'
-          : prods.map(p => `
-              <tr>
-                <td>${p.descricao}</td>
-                <td>${p.marca || '—'}</td>
-                <td>${_categorias[p.idCategoria] || p.idCategoria}</td>
-                <td>${formatarNumero(p.saldoAtual)}</td>
-                <td>${formatarNumero(p.estoqueMinimo)}</td>
-                <td><span class="badge badge-${p.produtoAtivo ? 'ativo' : 'inativo'}">
-                    ${p.produtoAtivo ? 'Ativo' : 'Inativo'}
-                  </span></td>
-                <td class="acoes-tabela">
-                  <button class="btn btn-secundario btn-sm"
-                    onclick="abrirFormulario(${JSON.stringify(p).replace(/"/g,'&quot;')})">
-                    Editar
-                  </button>
-                  ${p.produtoAtivo ? `
-                    <button class="btn btn-perigo btn-sm"
-                      onclick="desativar(${p.idProduto}, '${p.descricao.replace(/'/g,"\\'")}')">
-                      Desativar
-                    </button>` : `
-                    <button class="btn btn-sucesso btn-sm"
-                      onclick="ativar(${p.idProduto}, '${p.descricao.replace(/'/g,"\\'")}')">
-                      Ativar
-                    </button>`}
-                </td>
-              </tr>`).join('');
+        _produtosCache = prods;
+        renderizarTabela();
       } catch(err) { notificar(err.message, 'erro'); }
+    }
+
+    function renderizarTabela() {
+      const termo = document.getElementById('busca-produto').value.trim().toLowerCase();
+      const prods = !termo ? _produtosCache : _produtosCache.filter(p =>
+        p.descricao.toLowerCase().includes(termo) ||
+        (p.marca || '').toLowerCase().includes(termo) ||
+        (p.codBarras || '').toLowerCase().includes(termo)
+      );
+
+      const tbody = document.getElementById('lista-produtos');
+      tbody.innerHTML = prods.length === 0
+        ? `<tr><td colspan="7">${termo ? 'Nenhum produto encontrado para a busca.' : 'Nenhum produto encontrado.'}</td></tr>`
+        : prods.map(p => `
+            <tr>
+              <td>${p.descricao}</td>
+              <td>${p.marca || '—'}</td>
+              <td>${_categorias[p.idCategoria] || p.idCategoria}</td>
+              <td>${formatarNumero(p.saldoAtual)}</td>
+              <td>${formatarNumero(p.estoqueMinimo)}</td>
+              <td><span class="badge badge-${p.produtoAtivo ? 'ativo' : 'inativo'}">
+                  ${p.produtoAtivo ? 'Ativo' : 'Inativo'}
+                </span></td>
+              <td class="acoes-tabela">
+                <button class="btn btn-secundario btn-sm"
+                  onclick="abrirFormulario(${JSON.stringify(p).replace(/"/g,'&quot;')})">
+                  Editar
+                </button>
+                ${p.produtoAtivo ? `
+                  <button class="btn btn-perigo btn-sm"
+                    onclick="desativar(${p.idProduto}, '${p.descricao.replace(/'/g,"\\'")}')">
+                    Desativar
+                  </button>` : `
+                  <button class="btn btn-sucesso btn-sm"
+                    onclick="ativar(${p.idProduto}, '${p.descricao.replace(/'/g,"\\'")}')">
+                    Ativar
+                  </button>`}
+              </td>
+            </tr>`).join('');
     }
 
     async function abrirFormulario(produto = null) {
