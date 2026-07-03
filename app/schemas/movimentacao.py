@@ -28,3 +28,11 @@ class MovimentacaoResponse(BaseModel):
     observacao: str | None
 
     model_config = {"from_attributes": True}
+
+
+class MovimentacaoPagina(BaseModel):
+    itens: list[MovimentacaoResponse]
+    total: int
+    pagina: int
+    tamanho: int
+    totalPaginas: int

@@ -70,20 +70,18 @@
 
     async function carregarResumo() {
       try {
-        const [produtos, abaixo, cats, movs] = await Promise.all([
+        const hojeISO = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD local
+        const [produtos, abaixo, cats, movsHoje] = await Promise.all([
           api.get('/produtos/?apenas_ativos=true'),
           api.get('/produtos/abaixo-minimo'),
           api.get('/categorias/'),
-          api.get('/movimentacoes/'),
+          api.get(`/movimentacoes/?dataInicio=${hojeISO}&dataFim=${hojeISO}&tamanho=1`),
         ]);
 
         document.getElementById('total-produtos').textContent   = produtos.length;
         document.getElementById('abaixo-minimo').textContent    = abaixo.length;
         document.getElementById('total-categorias').textContent = cats.length;
-
-        const hoje = new Date().toDateString();
-        const movsHoje = movs.filter(m => new Date(m.dataMov).toDateString() === hoje);
-        document.getElementById('mov-hoje').textContent = movsHoje.length;
+        document.getElementById('mov-hoje').textContent = movsHoje.total;
 
         const tbody = document.getElementById('lista-alertas');
         if (abaixo.length === 0) {

@@ -1,3 +1,6 @@
+import math
+from datetime import date, datetime, time
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
@@ -6,7 +9,7 @@ from app.deps import get_current_user, require_perfil
 from app.models.movimentacao import Movimentacao, TipoMovEnum
 from app.models.produto import Produto
 from app.models.usuario import PerfilEnum, Usuario
-from app.schemas.movimentacao import MovimentacaoCreate, MovimentacaoResponse
+from app.schemas.movimentacao import MovimentacaoCreate, MovimentacaoPagina, MovimentacaoResponse
 
 router = APIRouter(prefix="/movimentacoes", tags=["Movimentações"])
 
@@ -15,10 +18,14 @@ _gestao = require_perfil(PerfilEnum.ADMINISTRADOR, PerfilEnum.OPERADOR)
 _SAIDA = {TipoMovEnum.SAIDA, TipoMovEnum.DESCARTE}
 
 
-@router.get("/", response_model=list[MovimentacaoResponse])
+@router.get("/", response_model=MovimentacaoPagina)
 def listar(
     idProduto: int | None = Query(None, description="Filtrar por produto"),
     idUsuario: int | None = Query(None, description="Filtrar por usuário"),
+    dataInicio: date | None = Query(None, description="Filtrar a partir desta data (inclusive)"),
+    dataFim: date | None = Query(None, description="Filtrar até esta data (inclusive)"),
+    pagina: int = Query(1, ge=1),
+    tamanho: int = Query(20, ge=1, le=100),
     _: Usuario = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -27,7 +34,25 @@ def listar(
         q = q.filter(Movimentacao.idProduto == idProduto)
     if idUsuario:
         q = q.filter(Movimentacao.idUsuario == idUsuario)
-    return q.order_by(Movimentacao.dataMov.desc()).all()
+    if dataInicio:
+        q = q.filter(Movimentacao.dataMov >= datetime.combine(dataInicio, time.min))
+    if dataFim:
+        q = q.filter(Movimentacao.dataMov <= datetime.combine(dataFim, time.max))
+
+    total = q.count()
+    itens = (
+        q.order_by(Movimentacao.dataMov.desc(), Movimentacao.idMovimentacao.desc())
+        .offset((pagina - 1) * tamanho)
+        .limit(tamanho)
+        .all()
+    )
+    return MovimentacaoPagina(
+        itens=itens,
+        total=total,
+        pagina=pagina,
+        tamanho=tamanho,
+        totalPaginas=math.ceil(total / tamanho) if total else 0,
+    )
 
 
 @router.get("/{id}", response_model=MovimentacaoResponse)

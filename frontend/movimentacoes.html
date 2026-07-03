@@ -81,7 +81,7 @@
         <div style="display:flex; gap:.75rem; align-items:flex-end; flex-wrap:wrap;">
           <div class="campo" style="margin:0">
             <label for="filtro-produto" style="font-size:.9rem">Filtrar por produto</label>
-            <select id="filtro-produto" onchange="carregarHistorico()" style="padding:.35rem .6rem">
+            <select id="filtro-produto" onchange="paginaAtual = 1; carregarHistorico()" style="padding:.35rem .6rem">
               <option value="">Todos</option>
             </select>
           </div>
@@ -106,6 +106,16 @@
           </tbody>
         </table>
       </div>
+
+      <div style="display:flex; gap:.75rem; align-items:center; margin-top:.75rem">
+        <button type="button" class="btn btn-secundario btn-sm" id="btn-pag-anterior" onclick="mudarPagina(-1)">
+          Anterior
+        </button>
+        <span id="status-paginacao" role="status" aria-live="polite"></span>
+        <button type="button" class="btn btn-secundario btn-sm" id="btn-pag-proxima" onclick="mudarPagina(1)">
+          Próxima
+        </button>
+      </div>
     </section>
   </main>
 
@@ -119,14 +129,17 @@
     renderizarNav('movimentacoes');
 
     let _produtos = {};
+    let paginaAtual = 1;
+    const TAMANHO_PAGINA = 20;
 
     async function inicializar() {
       await Promise.all([
         carregarProdutos('mov-produto'),
         carregarProdutos('filtro-produto'),
       ]);
-      // Copia opções do mov-produto no filtro com "Todos" no início
-      const prods = await api.get('/produtos/?apenas_ativos=true');
+      // Inclui inativos para que o histórico continue exibindo a descrição
+      // de produtos já desativados (as movimentações antigas permanecem).
+      const prods = await api.get('/produtos/?apenas_ativos=false');
       _produtos = Object.fromEntries(prods.map(p => [p.idProduto, p.descricao]));
 
       carregarHistorico();
@@ -134,13 +147,15 @@
 
     async function carregarHistorico() {
       const idProd = document.getElementById('filtro-produto').value;
-      const url = `/movimentacoes/${idProd ? `?idProduto=${idProd}` : ''}`;
+      const params = new URLSearchParams({ pagina: paginaAtual, tamanho: TAMANHO_PAGINA });
+      if (idProd) params.set('idProduto', idProd);
       try {
-        const movs = await api.get(url);
+        const resultado = await api.get(`/movimentacoes/?${params}`);
+        const { itens, total, totalPaginas } = resultado;
         const tbody = document.getElementById('lista-mov');
-        tbody.innerHTML = movs.length === 0
+        tbody.innerHTML = itens.length === 0
           ? '<tr><td colspan="5">Nenhuma movimentação encontrada.</td></tr>'
-          : movs.map(m => `
+          : itens.map(m => `
               <tr>
                 <td>${formatarData(m.dataMov)}</td>
                 <td>${_produtos[m.idProduto] || m.idProduto}</td>
@@ -150,7 +165,17 @@
                 <td>${formatarNumero(m.quantMov)}</td>
                 <td>${m.observacao || '—'}</td>
               </tr>`).join('');
+
+        document.getElementById('status-paginacao').textContent =
+          total === 0 ? 'Nenhuma movimentação encontrada.' : `Página ${paginaAtual} de ${totalPaginas} (${total} movimentações)`;
+        document.getElementById('btn-pag-anterior').disabled = paginaAtual <= 1;
+        document.getElementById('btn-pag-proxima').disabled = paginaAtual >= totalPaginas;
       } catch(err) { notificar(err.message, 'erro'); }
+    }
+
+    function mudarPagina(delta) {
+      paginaAtual += delta;
+      carregarHistorico();
     }
 
     document.getElementById('form-mov').addEventListener('submit', async (e) => {
@@ -182,6 +207,7 @@
         notificar('Movimentação registrada com sucesso.', 'sucesso');
         limparFormulario('form-mov');
         focarElemento('mov-produto');
+        paginaAtual = 1;
         carregarHistorico();
       } catch(err) { notificar(err.message, 'erro'); }
     });
