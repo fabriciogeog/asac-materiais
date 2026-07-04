@@ -426,6 +426,39 @@ tbody td {
 
 .barra-tabela h2 { margin-bottom: 0; }
 
+.barra-tabela label {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  font-size: .9rem;
+}
+
+.barra-tabela .filtro-inativos { margin-left: auto; }
+
+.barra-tabela input[type="search"] {
+  min-width: 16rem;
+  padding: .5rem .75rem;
+  border: 2px solid var(--cor-borda);
+  border-radius: var(--raio);
+  font-size: 1rem;
+  font-family: inherit;
+  background: #fff;
+  color: var(--cor-texto);
+}
+
+.barra-tabela input[type="search"]:focus {
+  border-color: var(--cor-primaria);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(26,61,110,.25);
+}
+
+.barra-tabela input[type="checkbox"] {
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: var(--cor-primaria);
+  cursor: pointer;
+}
+
 /* ── Separador de seção ──────────────────────────────────────── */
 .secao { margin-bottom: 2.5rem; }
 

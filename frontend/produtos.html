@@ -23,12 +23,12 @@
       <button class="btn btn-primario" id="btn-novo" onclick="abrirFormulario()">
         + Novo produto
       </button>
-      <label for="busca-produto" style="display:flex; align-items:center; gap:.4rem; font-size:.9rem;">
+      <label for="busca-produto">
         Buscar
         <input type="search" id="busca-produto" placeholder="Descrição, marca ou código de barras…"
-               oninput="renderizarTabela()" style="min-width:16rem">
+               oninput="renderizarTabela()">
       </label>
-      <label style="margin-left:auto; display:flex; align-items:center; gap:.4rem; font-size:.9rem;">
+      <label class="filtro-inativos">
         <input type="checkbox" id="chk-inativos" onchange="carregar()">
         Mostrar inativos
       </label>
