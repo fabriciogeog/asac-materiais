@@ -130,6 +130,31 @@ Feito isso uma vez por aparelho, o cadeado fica válido normalmente e a câmera 
 
 ---
 
+## Executar como serviço systemd (produção)
+
+Em vez de subir o `uvicorn` manualmente num terminal (que fica preso à sessão e não sobrevive a reboot), use o serviço systemd em `systemd/asac.service`. Ele sobe com HTTPS (mesmos certificados do passo anterior), reinicia sozinho se cair e inicia junto com o sistema.
+
+### 1. Instalar o serviço (uma vez por máquina)
+
+```bash
+sudo cp systemd/asac.service /etc/systemd/system/asac.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now asac      # habilita no boot + inicia agora
+```
+
+### 2. Comandos do dia a dia
+
+```bash
+sudo systemctl status asac        # ver se está rodando
+sudo systemctl restart asac       # reiniciar (ex.: depois de atualizar código)
+sudo systemctl stop asac          # parar
+journalctl -u asac -f             # acompanhar logs em tempo real
+```
+
+> Se o `systemd/asac.service` for editado (ex.: caminho do projeto mudou), repita `sudo cp` + `sudo systemctl daemon-reload` + `sudo systemctl restart asac`.
+
+---
+
 ## Estrutura do projeto
 
 ```
@@ -153,6 +178,8 @@ asac-materiais/
 │   └── js/
 │       ├── api.js         # Wrapper de fetch com suporte a JWT
 │       └── app.js         # Utilitários compartilhados (nav, notificações, guards)
+├── systemd/
+│   └── asac.service       # Unit systemd para rodar o servidor em produção
 ├── banco.sql              # Script SQL de criação das tabelas e seed de categorias
 ├── seed.py                # Script de inicialização do banco e criação do admin
 └── requirements.txt
