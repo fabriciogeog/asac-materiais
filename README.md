@@ -134,7 +134,29 @@ Feito isso uma vez por aparelho, o cadeado fica válido normalmente e a câmera 
 
 Em vez de subir o `uvicorn` manualmente num terminal (que fica preso à sessão e não sobrevive a reboot), use o serviço systemd em `systemd/asac.service`. Ele sobe com HTTPS (mesmos certificados do passo anterior), reinicia sozinho se cair e inicia junto com o sistema.
 
+> **`.venv/` não é versionado** (está no `.gitignore`). Ao clonar/copiar o projeto para uma máquina nova, o serviço systemd vai falhar com `status=203/EXEC` até que o venv seja criado ali — veja o passo 0.
+>
+> **`systemd/asac.service` tem caminhos absolutos fixos** (`WorkingDirectory` e `ExecStart` apontam para `/home/fabricio/Projetos/Python/yolo-barcode`). Se o projeto for clonado do GitHub com outro nome de pasta (ex.: `asac-materiais`) ou em outro usuário/local, esses caminhos ficam errados e o serviço falha com o mesmo `status=203/EXEC` — mesmo que o `.venv` exista. Confira/edite os caminhos do arquivo antes de instalar (passo 1).
+
+### 0. Criar o venv (uma vez por máquina, antes de instalar o serviço)
+
+```bash
+cd /caminho/do/projeto
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+O `ExecStart` do `asac.service` chama `.venv/bin/uvicorn` por caminho absoluto, então esse passo precisa rodar em toda máquina nova antes do serviço subir.
+
 ### 1. Instalar o serviço (uma vez por máquina)
+
+Antes de copiar, confirme que `WorkingDirectory` e `ExecStart` em `systemd/asac.service` apontam para o caminho real onde o projeto foi clonado nessa máquina (pode ter nome de pasta diferente de `yolo-barcode`, dependendo de como o `git clone` foi feito):
+
+```bash
+grep -E "WorkingDirectory|ExecStart" systemd/asac.service
+pwd    # compare com o caminho acima; edite o arquivo se divergir
+```
 
 ```bash
 sudo cp systemd/asac.service /etc/systemd/system/asac.service
@@ -152,6 +174,16 @@ journalctl -u asac -f             # acompanhar logs em tempo real
 ```
 
 > Se o `systemd/asac.service` for editado (ex.: caminho do projeto mudou), repita `sudo cp` + `sudo systemctl daemon-reload` + `sudo systemctl restart asac`.
+
+### Troubleshooting: `status=203/EXEC` no `journalctl`
+
+Esse código indica que o systemd não conseguiu executar o binário do `ExecStart`. Causas mais comuns:
+
+- **Nome da pasta do projeto diferente do que está no `asac.service`** — se o clone do GitHub usou outro nome (ex.: `asac-materiais` em vez de `yolo-barcode`), `WorkingDirectory`/`ExecStart` apontam para um caminho que não existe. Confira com `grep -E "WorkingDirectory|ExecStart" systemd/asac.service` e compare com `pwd`.
+- **`.venv` não existe na máquina** (caso mais comum ao mover o projeto para uma máquina nova) — resolva com o passo 0 acima.
+- Arquivo existe mas sem permissão de execução: `chmod +x .venv/bin/uvicorn`.
+- Shebang do `.venv/bin/uvicorn` aponta para um python que não existe nessa máquina (`head -1 .venv/bin/uvicorn` para conferir o caminho).
+- Partição com `noexec` no mount.
 
 ---
 
