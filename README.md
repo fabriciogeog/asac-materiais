@@ -187,6 +187,12 @@ Esse código indica que o systemd não conseguiu executar o binário do `ExecSta
 
 ---
 
+## Opção: implantar em VM (KVM)
+
+Todos os passos acima assumem instalação direta na máquina (bare-metal), que é a forma padrão de rodar o sistema. Para quem preferir isolar o servidor numa máquina virtual — por exemplo, para testar com snapshots reversíveis ou rodar ao lado de outros serviços no mesmo computador — há um tutorial completo em [`docs/implantacao-vm.md`](docs/implantacao-vm.md), cobrindo KVM/QEMU + virt-manager, rede em bridge (para o celular acessar a VM na rede local), passthrough USB da webcam e a reaplicação dos passos de HTTPS/systemd dentro da VM.
+
+---
+
 ## Estrutura do projeto
 
 ```
@@ -212,6 +218,8 @@ asac-materiais/
 │       └── app.js         # Utilitários compartilhados (nav, notificações, guards)
 ├── systemd/
 │   └── asac.service       # Unit systemd para rodar o servidor em produção
+├── docs/
+│   └── implantacao-vm.md  # Tutorial opcional: implantação em VM (KVM)
 ├── banco.sql              # Script SQL de criação das tabelas e seed de categorias
 ├── seed.py                # Script de inicialização do banco e criação do admin
 └── requirements.txt
