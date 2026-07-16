@@ -119,6 +119,8 @@ async function carregarProdutos(selectId, valorSelecionado = null) {
     if (!select) return;
     try {
         const prods = await api.get('/produtos/?apenas_ativos=true');
+        // Ordena por descrição respeitando acentos do pt-BR (Á antes de B).
+        prods.sort((a, b) => a.descricao.localeCompare(b.descricao, 'pt-BR', { sensitivity: 'base' }));
         select.innerHTML = '<option value="">Selecione um produto</option>' +
             prods.map(p => `<option value="${p.idProduto}"
                 ${p.idProduto == valorSelecionado ? 'selected' : ''}>${p.descricao}</option>`).join('');

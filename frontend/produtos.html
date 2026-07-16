@@ -26,7 +26,13 @@
       <label for="busca-produto">
         Buscar
         <input type="search" id="busca-produto" placeholder="Descrição, marca ou código de barras…"
-               oninput="renderizarTabela()">
+               oninput="paginaAtual = 1; renderizarTabela()">
+      </label>
+      <label for="filtro-categoria">
+        Categoria
+        <select id="filtro-categoria" onchange="paginaAtual = 1; renderizarTabela()">
+          <option value="">Todas</option>
+        </select>
       </label>
       <label class="filtro-inativos">
         <input type="checkbox" id="chk-inativos" onchange="carregar()">
@@ -99,6 +105,16 @@
         </tbody>
       </table>
     </div>
+
+    <div style="display:flex; gap:.75rem; align-items:center; margin-top:.75rem">
+      <button type="button" class="btn btn-secundario btn-sm" id="btn-pag-anterior" onclick="mudarPagina(-1)">
+        Anterior
+      </button>
+      <span id="status-paginacao" role="status" aria-live="polite"></span>
+      <button type="button" class="btn btn-secundario btn-sm" id="btn-pag-proxima" onclick="mudarPagina(1)">
+        Próxima
+      </button>
+    </div>
   </main>
 
   <div role="alert" id="notificacao" hidden class="notificacao"></div>
@@ -112,6 +128,8 @@
 
     let _categorias = {};
     let _produtosCache = [];
+    let paginaAtual = 1;
+    const TAMANHO_PAGINA = 20;
 
     async function carregar() {
       try {
@@ -121,22 +139,47 @@
           api.get('/categorias/'),
         ]);
         _categorias = Object.fromEntries(cats.map(c => [c.idCategoria, c.nome]));
-        _produtosCache = prods;
+        // Ordena por descrição respeitando acentos do pt-BR (Á antes de B).
+        _produtosCache = prods.sort((a, b) =>
+          a.descricao.localeCompare(b.descricao, 'pt-BR', { sensitivity: 'base' })
+        );
+
+        // Repovoa o filtro de categorias preservando a seleção atual.
+        const filtro = document.getElementById('filtro-categoria');
+        const selecionada = filtro.value;
+        filtro.innerHTML = '<option value="">Todas</option>' +
+          cats.map(c => `<option value="${c.idCategoria}">${c.nome}</option>`).join('');
+        filtro.value = selecionada;
+
+        paginaAtual = 1;
         renderizarTabela();
       } catch(err) { notificar(err.message, 'erro'); }
     }
 
     function renderizarTabela() {
       const termo = document.getElementById('busca-produto').value.trim().toLowerCase();
-      const prods = !termo ? _produtosCache : _produtosCache.filter(p =>
-        p.descricao.toLowerCase().includes(termo) ||
-        (p.marca || '').toLowerCase().includes(termo) ||
-        (p.codBarras || '').toLowerCase().includes(termo)
+      const categoria = document.getElementById('filtro-categoria').value;
+      const filtrados = _produtosCache.filter(p =>
+        (!categoria || p.idCategoria === Number(categoria)) &&
+        (!termo ||
+          p.descricao.toLowerCase().includes(termo) ||
+          (p.marca || '').toLowerCase().includes(termo) ||
+          (p.codBarras || '').toLowerCase().includes(termo))
       );
+
+      const totalPaginas = Math.max(1, Math.ceil(filtrados.length / TAMANHO_PAGINA));
+      paginaAtual = Math.min(Math.max(1, paginaAtual), totalPaginas);
+      const prods = filtrados.slice((paginaAtual - 1) * TAMANHO_PAGINA, paginaAtual * TAMANHO_PAGINA);
+
+      document.getElementById('status-paginacao').textContent = filtrados.length === 0
+        ? 'Nenhum produto encontrado.'
+        : `Página ${paginaAtual} de ${totalPaginas} (${filtrados.length} produtos)`;
+      document.getElementById('btn-pag-anterior').disabled = paginaAtual <= 1;
+      document.getElementById('btn-pag-proxima').disabled = paginaAtual >= totalPaginas;
 
       const tbody = document.getElementById('lista-produtos');
       tbody.innerHTML = prods.length === 0
-        ? `<tr><td colspan="7">${termo ? 'Nenhum produto encontrado para a busca.' : 'Nenhum produto encontrado.'}</td></tr>`
+        ? `<tr><td colspan="7">${(termo || categoria) ? 'Nenhum produto encontrado para o filtro.' : 'Nenhum produto encontrado.'}</td></tr>`
         : prods.map(p => `
             <tr>
               <td>${p.descricao}</td>
@@ -165,13 +208,18 @@
             </tr>`).join('');
     }
 
+    function mudarPagina(delta) {
+      paginaAtual += delta;
+      renderizarTabela();
+    }
+
     async function abrirFormulario(produto = null) {
       await carregarCategorias('prod-categoria', produto?.idCategoria);
       document.getElementById('prod-id').value          = produto?.idProduto || '';
       document.getElementById('prod-descricao').value   = produto?.descricao || '';
       document.getElementById('prod-marca').value       = produto?.marca || '';
       document.getElementById('prod-codbarras').value   = produto?.codBarras || '';
-      document.getElementById('prod-estoque-min').value = produto?.estoqueMinimo ?? 0;
+      document.getElementById('prod-estoque-min').value = Number(produto?.estoqueMinimo ?? 0);
       document.getElementById('titulo-form').textContent = produto ? 'Editar produto' : 'Novo produto';
       mostrarElemento('painel-form');
       focarElemento('prod-descricao');

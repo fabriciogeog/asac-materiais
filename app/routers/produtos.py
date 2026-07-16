@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -21,7 +22,7 @@ def listar(
     q = db.query(Produto)
     if apenas_ativos:
         q = q.filter(Produto.produtoAtivo == True)
-    return q.all()
+    return q.order_by(func.lower(Produto.descricao)).all()
 
 
 @router.get("/abaixo-minimo", response_model=list[ProdutoResponse])
@@ -30,6 +31,7 @@ def abaixo_do_minimo(_: Usuario = Depends(get_current_user), db: Session = Depen
     return (
         db.query(Produto)
         .filter(Produto.produtoAtivo == True, Produto.saldoAtual < Produto.estoqueMinimo)
+        .order_by(func.lower(Produto.descricao))
         .all()
     )
 
