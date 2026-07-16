@@ -58,7 +58,14 @@
             <div class="campo">
               <label for="prod-codbarras">Código de barras</label>
               <div class="campo-com-acao">
-                <input type="text" id="prod-codbarras" maxlength="50">
+                <input type="text" id="prod-codbarras" maxlength="50"
+                       placeholder="Digite e pressione Enter para buscar">
+                <button type="button" class="btn btn-secundario btn-sm"
+                        id="btn-buscar-codigo"
+                        onclick="buscarCodigoDigitado()"
+                        aria-label="Buscar produto pelo código digitado">
+                  Buscar
+                </button>
                 <button type="button" class="btn btn-secundario btn-sm"
                         onclick="escanearCodigo()"
                         aria-label="Escanear código de barras com a câmera">
@@ -271,32 +278,63 @@
       } catch(err) { notificar(err.message, 'erro'); }
     }
 
-    function escanearCodigo() {
-      abrirScannerModal(function (resultado) {
-        document.getElementById('prod-codbarras').value = resultado.codBarras;
+    function preencherComResultado(resultado) {
+      document.getElementById('prod-codbarras').value = resultado.codBarras;
 
-        if (resultado.encontrado_local) {
-          notificar(
-            `Produto "${resultado.descricao}" já cadastrado (código ${resultado.codBarras}).`,
-            'aviso'
-          );
-          return;
-        }
-        if (resultado.descricao) {
-          document.getElementById('prod-descricao').value = resultado.descricao;
-        }
-        if (resultado.marca) {
-          document.getElementById('prod-marca').value = resultado.marca;
-        }
+      if (resultado.encontrado_local) {
         notificar(
-          resultado.descricao
-            ? 'Dados preenchidos pela API. Verifique e complete o cadastro.'
-            : 'Código capturado. Produto não encontrado na API — preencha os dados manualmente.',
-          resultado.descricao ? 'sucesso' : 'aviso'
+          `Produto "${resultado.descricao}" já cadastrado (código ${resultado.codBarras}).`,
+          'aviso'
         );
-        focarElemento('prod-categoria');
-      });
+        return;
+      }
+      if (resultado.descricao) {
+        document.getElementById('prod-descricao').value = resultado.descricao;
+      }
+      if (resultado.marca) {
+        document.getElementById('prod-marca').value = resultado.marca;
+      }
+      notificar(
+        resultado.descricao
+          ? 'Dados preenchidos pela API. Verifique e complete o cadastro.'
+          : 'Código capturado. Produto não encontrado na API — preencha os dados manualmente.',
+        resultado.descricao ? 'sucesso' : 'aviso'
+      );
+      focarElemento('prod-categoria');
     }
+
+    function escanearCodigo() {
+      abrirScannerModal(preencherComResultado);
+    }
+
+    async function buscarCodigoDigitado() {
+      const codigo = document.getElementById('prod-codbarras').value.trim();
+      if (!codigo) {
+        notificar('Digite um código de barras para buscar.', 'aviso');
+        focarElemento('prod-codbarras');
+        return;
+      }
+      const btn = document.getElementById('btn-buscar-codigo');
+      btn.disabled = true;
+      btn.textContent = 'Buscando…';
+      try {
+        const resultado = await api.get(`/barcode/lookup/${encodeURIComponent(codigo)}`);
+        preencherComResultado(resultado);
+      } catch (err) {
+        notificar(`Erro ao consultar código: ${err.message}`, 'erro');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Buscar';
+      }
+    }
+
+    // Enter no campo de código dispara a busca em vez de submeter o formulário.
+    document.getElementById('prod-codbarras').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        buscarCodigoDigitado();
+      }
+    });
 
     carregar();
   </script>
