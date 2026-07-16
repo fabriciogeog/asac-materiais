@@ -83,6 +83,8 @@
         document.getElementById('total-categorias').textContent = cats.length;
         document.getElementById('mov-hoje').textContent = movsHoje.total;
 
+        const nomesCategorias = Object.fromEntries(cats.map(c => [c.idCategoria, c.nome]));
+
         const tbody = document.getElementById('lista-alertas');
         if (abaixo.length === 0) {
           tbody.innerHTML = '<tr><td colspan="4">Nenhum produto abaixo do estoque mínimo. ✓</td></tr>';
@@ -90,7 +92,7 @@
           tbody.innerHTML = abaixo.map(p => `
             <tr>
               <td>${p.descricao}</td>
-              <td>${p.idCategoria}</td>
+              <td>${nomesCategorias[p.idCategoria] || p.idCategoria}</td>
               <td>${formatarNumero(p.saldoAtual)}</td>
               <td>${formatarNumero(p.estoqueMinimo)}</td>
             </tr>

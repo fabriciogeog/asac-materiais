@@ -2,6 +2,8 @@ from decimal import Decimal
 from datetime import date
 from pydantic import BaseModel, field_validator
 
+from app.schemas.tipos import NumeroJSON
+
 
 class ProdutoCreate(BaseModel):
     codBarras: str | None = None
@@ -32,8 +34,8 @@ class ProdutoResponse(BaseModel):
     descricao: str
     marca: str | None
     idCategoria: int
-    estoqueMinimo: Decimal
-    saldoAtual: Decimal
+    estoqueMinimo: NumeroJSON
+    saldoAtual: NumeroJSON
     produtoAtivo: bool
     dataCadastro: date
 

@@ -2,6 +2,7 @@ from decimal import Decimal
 from datetime import datetime
 from pydantic import BaseModel, field_validator
 from app.models.movimentacao import TipoMovEnum
+from app.schemas.tipos import NumeroJSON
 
 
 class MovimentacaoCreate(BaseModel):
@@ -22,7 +23,7 @@ class MovimentacaoResponse(BaseModel):
     idMovimentacao: int
     tipoMov: TipoMovEnum
     dataMov: datetime
-    quantMov: Decimal
+    quantMov: NumeroJSON
     idProduto: int
     idUsuario: int
     observacao: str | None
