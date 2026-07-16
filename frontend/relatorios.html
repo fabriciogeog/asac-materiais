@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Relatórios — SISMAT</title>
+  <link rel="stylesheet" href="/ui/css/style.css">
+</head>
+<body>
+  <a href="#conteudo-principal" class="skip-link">Ir para o conteúdo principal</a>
+
+  <header role="banner">
+    <a href="/ui/index.html" class="logo-link" aria-label="SISMAT — ir para o início">
+      <img src="/ui/img/logo.png" alt="SISMAT" class="logo-img">
+      <span class="logo-nome">SISMAT<span class="logo-subtitulo">Sistema de Gestão de Materiais</span></span>
+    </a>
+    <nav aria-label="Menu principal" id="nav-principal"></nav>
+  </header>
+
+  <main id="conteudo-principal">
+    <div class="nao-imprimir">
+      <h2>Relatórios</h2>
+
+      <section aria-labelledby="titulo-parametros" class="secao">
+        <div class="painel-formulario">
+          <h3 id="titulo-parametros">Gerar relatório</h3>
+          <form id="form-relatorio" novalidate>
+            <div class="linha-campos">
+              <div class="campo">
+                <label for="rel-tipo">Relatório <abbr title="obrigatório">*</abbr></label>
+                <select id="rel-tipo" required aria-required="true" onchange="ajustarParametros()">
+                  <option value="abaixo-minimo">Estoque abaixo do mínimo</option>
+                  <option value="por-categoria">Produtos por categoria</option>
+                  <option value="movimentacoes">Movimentações por período</option>
+                </select>
+              </div>
+              <div class="campo" id="campo-categoria" hidden>
+                <label for="rel-categoria">Categoria</label>
+                <select id="rel-categoria">
+                  <option value="">Todas</option>
+                </select>
+              </div>
+              <div class="campo" id="campo-data-inicio" hidden>
+                <label for="rel-data-inicio">Data inicial</label>
+                <input type="date" id="rel-data-inicio">
+              </div>
+              <div class="campo" id="campo-data-fim" hidden>
+                <label for="rel-data-fim">Data final</label>
+                <input type="date" id="rel-data-fim">
+              </div>
+              <div class="campo" id="campo-produto" hidden>
+                <label for="rel-produto">Produto</label>
+                <select id="rel-produto">
+                  <option value="">Todos</option>
+                </select>
+              </div>
+            </div>
+            <div class="acoes-formulario">
+              <button type="submit" class="btn btn-primario">Gerar relatório</button>
+              <button type="button" class="btn btn-secundario" id="btn-imprimir"
+                      onclick="window.print()" disabled
+                      aria-describedby="dica-imprimir">
+                Imprimir / Salvar PDF
+              </button>
+            </div>
+            <p id="dica-imprimir" class="relatorio-meta" style="margin-top:.5rem">
+              Na janela de impressão, escolha "Salvar como PDF" como destino para gerar o arquivo.
+            </p>
+          </form>
+        </div>
+      </section>
+    </div>
+
+    <!-- Documento do relatório (única área impressa) -->
+    <section id="area-relatorio" hidden aria-labelledby="relatorio-titulo">
+      <div class="relatorio-cabecalho">
+        <p class="relatorio-sistema">
+          ASAC — Associação Sorocabana de Atividades para Deficientes Visuais<br>
+          SISMAT — Sistema de Gestão de Materiais
+        </p>
+        <h3 id="relatorio-titulo" tabindex="-1"></h3>
+        <p id="relatorio-filtros" class="relatorio-meta"></p>
+      </div>
+      <div id="relatorio-corpo" aria-live="polite"></div>
+      <p id="relatorio-rodape" class="relatorio-meta"></p>
+    </section>
+  </main>
+
+  <div role="alert" id="notificacao" hidden class="notificacao"></div>
+
+  <script src="/ui/js/api.js"></script>
+  <script src="/ui/js/app.js"></script>
+  <script>
+    exigirAuth();
+    renderizarNav('relatorios');
+
+    const ordenar = (lista, chave = 'descricao') =>
+      lista.sort((a, b) => a[chave].localeCompare(b[chave], 'pt-BR', { sensitivity: 'base' }));
+
+    /* ── Parâmetros visíveis por tipo de relatório ─────────────── */
+    const PARAMETROS = {
+      'abaixo-minimo':  [],
+      'por-categoria':  ['campo-categoria'],
+      'movimentacoes':  ['campo-data-inicio', 'campo-data-fim', 'campo-produto'],
+    };
+
+    function ajustarParametros() {
+      const tipo = document.getElementById('rel-tipo').value;
+      ['campo-categoria', 'campo-data-inicio', 'campo-data-fim', 'campo-produto']
+        .forEach(id => document.getElementById(id).hidden = !PARAMETROS[tipo].includes(id));
+    }
+
+    async function inicializar() {
+      try {
+        const [cats, prods] = await Promise.all([
+          api.get('/categorias/'),
+          // Inclui inativos: o histórico de movimentações preserva produtos desativados.
+          api.get('/produtos/?apenas_ativos=false'),
+        ]);
+        document.getElementById('rel-categoria').innerHTML = '<option value="">Todas</option>' +
+          ordenar(cats, 'nome').map(c => `<option value="${c.idCategoria}">${c.nome}</option>`).join('');
+        document.getElementById('rel-produto').innerHTML = '<option value="">Todos</option>' +
+          ordenar(prods).map(p => `<option value="${p.idProduto}">${p.descricao}</option>`).join('');
+
+        // Período padrão: do primeiro dia do mês atual até hoje.
+        const hoje = new Date();
+        const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+        document.getElementById('rel-data-inicio').value = inicioMes.toLocaleDateString('en-CA');
+        document.getElementById('rel-data-fim').value    = hoje.toLocaleDateString('en-CA');
+      } catch (err) { notificar(err.message, 'erro'); }
+      ajustarParametros();
+    }
+
+    /* ── Montagem do documento ─────────────────────────────────── */
+    function exibirRelatorio(titulo, filtros, corpoHtml) {
+      document.getElementById('relatorio-titulo').textContent  = titulo;
+      document.getElementById('relatorio-filtros').textContent = filtros;
+      document.getElementById('relatorio-corpo').innerHTML     = corpoHtml;
+      document.getElementById('relatorio-rodape').textContent =
+        `Emitido em ${new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}` +
+        ` · Perfil: ${getPerfil()} · SISMAT`;
+      mostrarElemento('area-relatorio');
+      document.getElementById('btn-imprimir').disabled = false;
+      focarElemento('relatorio-titulo');
+    }
+
+    function tabela(colunas, linhas, legenda) {
+      return `
+        <div class="tabela-container">
+          <table>
+            <caption>${legenda}</caption>
+            <thead><tr>${colunas.map(c => `<th scope="col">${c}</th>`).join('')}</tr></thead>
+            <tbody>${linhas.join('')}</tbody>
+          </table>
+        </div>`;
+    }
+
+    /* ── Relatório 1: estoque abaixo do mínimo ─────────────────── */
+    async function gerarAbaixoMinimo() {
+      const [prods, cats] = await Promise.all([
+        api.get('/produtos/abaixo-minimo'),
+        api.get('/categorias/'),
+      ]);
+      const nomeCat = Object.fromEntries(cats.map(c => [c.idCategoria, c.nome]));
+      ordenar(prods);
+
+      const corpo = prods.length === 0
+        ? '<p class="relatorio-resumo">Nenhum produto abaixo do estoque mínimo. Situação regular. ✓</p>'
+        : `<p class="relatorio-resumo">${prods.length} produto(s) precisando de reposição.</p>` +
+          tabela(
+            ['Produto', 'Categoria', 'Saldo atual', 'Estoque mínimo', 'Repor (mín.)'],
+            prods.map(p => `
+              <tr>
+                <td>${p.descricao}</td>
+                <td>${nomeCat[p.idCategoria] || p.idCategoria}</td>
+                <td>${formatarNumero(p.saldoAtual)}</td>
+                <td>${formatarNumero(p.estoqueMinimo)}</td>
+                <td>${formatarNumero(p.estoqueMinimo - p.saldoAtual)}</td>
+              </tr>`),
+            'Produtos ativos com saldo abaixo do estoque mínimo'
+          );
+
+      exibirRelatorio('Relatório de estoque abaixo do mínimo', 'Somente produtos ativos.', corpo);
+    }
+
+    /* ── Relatório 2: produtos por categoria ───────────────────── */
+    async function gerarPorCategoria() {
+      const idCat = document.getElementById('rel-categoria').value;
+      const [prods, cats] = await Promise.all([
+        api.get('/produtos/?apenas_ativos=true'),
+        api.get('/categorias/'),
+      ]);
+      ordenar(prods);
+      ordenar(cats, 'nome');
+
+      const categorias = idCat ? cats.filter(c => c.idCategoria === Number(idCat)) : cats;
+      const secoes = [];
+      for (const c of categorias) {
+        const doGrupo = prods.filter(p => p.idCategoria === c.idCategoria);
+        if (doGrupo.length === 0 && !idCat) continue;  // pula categorias vazias no relatório geral
+        secoes.push(`
+          <section class="relatorio-secao">
+            <h4>${c.nome} — ${doGrupo.length} produto(s)</h4>
+            ${doGrupo.length === 0
+              ? '<p class="relatorio-resumo">Nenhum produto ativo nesta categoria.</p>'
+              : tabela(
+                  ['Produto', 'Marca', 'Código de barras', 'Saldo atual', 'Est. mínimo'],
+                  doGrupo.map(p => `
+                    <tr>
+                      <td>${p.descricao}</td>
+                      <td>${p.marca || '—'}</td>
+                      <td>${p.codBarras || '—'}</td>
+                      <td>${formatarNumero(p.saldoAtual)}</td>
+                      <td>${formatarNumero(p.estoqueMinimo)}</td>
+                    </tr>`),
+                  `Produtos ativos da categoria ${c.nome}`
+                )}
+          </section>`);
+      }
+
+      const nomeFiltro = idCat
+        ? `Categoria: ${categorias[0]?.nome || idCat}`
+        : 'Todas as categorias';
+      const corpo = secoes.length === 0
+        ? '<p class="relatorio-resumo">Nenhum produto ativo cadastrado.</p>'
+        : `<p class="relatorio-resumo">Total: ${idCat
+              ? (prods.filter(p => p.idCategoria === Number(idCat)).length)
+              : prods.length} produto(s) ativo(s).</p>` + secoes.join('');
+
+      exibirRelatorio('Relatório de produtos por categoria', `${nomeFiltro} · somente produtos ativos.`, corpo);
+    }
+
+    /* ── Relatório 3: movimentações por período ────────────────── */
+    async function gerarMovimentacoes() {
+      const inicio = document.getElementById('rel-data-inicio').value;
+      const fim    = document.getElementById('rel-data-fim').value;
+      const idProd = document.getElementById('rel-produto').value;
+
+      if (!inicio || !fim) {
+        notificar('Informe a data inicial e a data final.', 'aviso');
+        focarElemento(!inicio ? 'rel-data-inicio' : 'rel-data-fim');
+        return;
+      }
+      if (inicio > fim) {
+        notificar('A data inicial não pode ser posterior à data final.', 'aviso');
+        focarElemento('rel-data-inicio');
+        return;
+      }
+
+      // A API pagina em até 100 itens: busca todas as páginas do período.
+      const movs = [];
+      let pagina = 1;
+      while (pagina <= 100) {  // trava de segurança (10.000 movimentações)
+        const params = new URLSearchParams({ dataInicio: inicio, dataFim: fim, pagina, tamanho: 100 });
+        if (idProd) params.set('idProduto', idProd);
+        const r = await api.get(`/movimentacoes/?${params}`);
+        movs.push(...r.itens);
+        if (pagina >= r.totalPaginas) break;
+        pagina++;
+      }
+
+      const prods = await api.get('/produtos/?apenas_ativos=false');
+      const nomeProd = Object.fromEntries(prods.map(p => [p.idProduto, p.descricao]));
+
+      const contagem = { ENTRADA: 0, SAIDA: 0, AJUSTE: 0, DESCARTE: 0 };
+      movs.forEach(m => contagem[m.tipoMov]++);
+
+      const corpo = movs.length === 0
+        ? '<p class="relatorio-resumo">Nenhuma movimentação no período.</p>'
+        : `<p class="relatorio-resumo">
+             ${movs.length} movimentação(ões) no período —
+             Entradas: ${contagem.ENTRADA} · Saídas: ${contagem.SAIDA} ·
+             Ajustes: ${contagem.AJUSTE} · Descartes: ${contagem.DESCARTE}
+           </p>` +
+          tabela(
+            ['Data / Hora', 'Produto', 'Tipo', 'Quantidade', 'Observação'],
+            movs.map(m => `
+              <tr>
+                <td>${formatarData(m.dataMov)}</td>
+                <td>${nomeProd[m.idProduto] || m.idProduto}</td>
+                <td>${m.tipoMov}</td>
+                <td>${formatarNumero(m.quantMov)}</td>
+                <td>${m.observacao || '—'}</td>
+              </tr>`),
+            'Movimentações do período (mais recentes primeiro)'
+          );
+
+      const fmt = d => new Date(d + 'T00:00').toLocaleDateString('pt-BR');
+      const filtroProd = idProd ? `Produto: ${nomeProd[Number(idProd)] || idProd}` : 'Todos os produtos';
+      exibirRelatorio(
+        'Relatório de movimentações por período',
+        `Período: ${fmt(inicio)} a ${fmt(fim)} · ${filtroProd}.`,
+        corpo
+      );
+    }
+
+    /* ── Submit ────────────────────────────────────────────────── */
+    document.getElementById('form-relatorio').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const tipo = document.getElementById('rel-tipo').value;
+      try {
+        if (tipo === 'abaixo-minimo')      await gerarAbaixoMinimo();
+        else if (tipo === 'por-categoria') await gerarPorCategoria();
+        else                               await gerarMovimentacoes();
+      } catch (err) { notificar(err.message, 'erro'); }
+    });
+
+    inicializar();
+  </script>
+</body>
+</html>

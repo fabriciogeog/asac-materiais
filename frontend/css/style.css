@@ -569,3 +569,66 @@ tbody td {
   box-shadow: 0 0 0 2000px rgba(0, 0, 0, .25);
   pointer-events: none;
 }
+
+/* ── Relatórios ──────────────────────────────────────────────── */
+.relatorio-cabecalho {
+  border-bottom: 3px solid var(--cor-primaria);
+  padding-bottom: .75rem;
+  margin-bottom: 1rem;
+}
+
+.relatorio-sistema {
+  font-weight: 700;
+  color: var(--cor-primaria);
+  font-size: .95rem;
+  line-height: 1.4;
+}
+
+.relatorio-cabecalho h3 {
+  font-size: 1.25rem;
+  margin: .5rem 0 .25rem;
+}
+
+.relatorio-meta {
+  font-size: .875rem;
+  color: var(--cor-desabilitado);
+}
+
+.relatorio-secao h4 {
+  font-size: 1rem;
+  color: var(--cor-primaria);
+  margin: 1.5rem 0 .5rem;
+}
+
+.relatorio-resumo {
+  font-size: .95rem;
+  margin: .75rem 0 1rem;
+}
+
+/* ── Impressão (relatórios em PDF via navegador) ─────────────── */
+@media print {
+  /* Só o documento do relatório vai para o papel */
+  header, .skip-link, .nao-imprimir, .notificacao { display: none !important; }
+
+  main { max-width: none; padding: 0; }
+  body { font-size: 11pt; }
+
+  /* Navegadores não imprimem fundos por padrão: o cabeçalho azul da
+     tabela viraria texto branco invisível. Troca por preto com borda. */
+  thead th {
+    background: #fff !important;
+    color: #000 !important;
+    border-bottom: 2px solid #000;
+  }
+  tbody tr:nth-child(even),
+  tbody tr:hover { background: #fff !important; }
+  tbody td { border-bottom: 1px solid #888; }
+
+  .tabela-container { overflow: visible; }
+  tr { page-break-inside: avoid; }
+  thead { display: table-header-group; } /* repete o cabeçalho em cada página */
+
+  .relatorio-sistema, .relatorio-secao h4, .relatorio-cabecalho h3 { color: #000; }
+  .relatorio-meta { color: #333; }
+  .badge { padding: 0; background: none !important; color: #000 !important; }
+}

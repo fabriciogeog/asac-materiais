@@ -40,6 +40,9 @@ function renderizarNav(paginaAtual) {
         );
     }
 
+    // Relatórios são somente leitura: disponíveis para todos os perfis.
+    itens.push({ href: '/ui/relatorios.html', texto: 'Relatórios', pagina: 'relatorios' });
+
     if (perfil === 'ADMINISTRADOR') {
         itens.push({ href: '/ui/usuarios.html', texto: 'Usuários', pagina: 'usuarios' });
     }
